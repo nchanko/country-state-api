@@ -19,3 +19,11 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+### Data Attribution
+The data used in this project is sourced from third-party providers:
+- Global city and country data provided by [dr5hn/countries-states-cities-database](https://github.com/dr5hn/countries-states-cities-database).
+- Myanmar-specific PCode data provided by the [Myanmar Information Management Unit (MIMU)](https://themimu.info/).
+- All data remains the property of its respective owners and is used here in accordance with their respective licenses.

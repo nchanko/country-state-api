@@ -1,71 +1,49 @@
 # Country State API
 
-Fast, reliable API for countries and their states/provinces with phone codes, regions, and flags.
+Fast, reliable API for countries and their states/provinces with phone codes, regions, and flags. Now handles over 150,000 cities with specialized Myanmar PCode data.
 
 ## Features
 
 - 249 countries with complete data
-- Phone codes for all countries  
-- 6 world regions with subregions
-- Thousands of states/provinces
-- Currency codes and symbols
-- Unicode flag emojis
-- Search functionality
-- Rate limited and cached
+- 150,000+ cities with coordinates
+- **Zero-Config Redis Support**: Automatically syncs data to Redis on startup.
+- **Shared Rate Limiting**: Production-grade traffic control via Redis.
+- **Intelligent Fallback**: Works perfectly without Redis for local testing.
+- Support for localized names (`name_local`)
+- Global search functionality for countries, states, and cities
 
 ## Quick Start
 
 ```bash
-# Install
+# Install dependencies
 pip install -r requirements.txt
 
-# Run
-uvicorn main:app --reload
+# Start the API
+python main.py
 ```
+*On first run, the API will automatically detect your Redis settings and sync the city data for you.*
 
 ## Usage
 
 ### Get Countries
-```bash
-curl http://localhost:8000/v1/countries
-```
+`GET /v1/countries`
 
-### Get States
-```bash
-curl http://localhost:8000/v1/countries/US/states
-```
+### Get Cities for State
+`GET /v1/countries/US/states/California/cities`
 
-### Search Countries
-```bash
-curl "http://localhost:8000/v1/search/countries?q=united"
-```
-
-### Get Regions
-```bash
-curl http://localhost:8000/v1/regions
-```
-
-### Search by Phone Code
-```bash
-curl http://localhost:8000/v1/search/phone-code/1
-```
-
-## API Endpoints
-
-- `GET /v1/countries` - All countries
-- `GET /v1/countries/{code}` - Country details  
-- `GET /v1/countries/{code}/states` - States for country
-- `GET /v1/regions` - All regions
-- `GET /v1/regions/{region}/countries` - Countries in region
-- `GET /v1/search/countries?q={query}` - Search countries
-- `GET /v1/search/states?q={query}` - Search states  
-- `GET /v1/search/phone-code/{code}` - Search by phone code
-- `GET /version` - API version info
+### Search Cities (Global)
+`GET /v1/search/cities?q=Tokyo`
 
 ## Documentation
 
 - Interactive: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
+
+## Data Sources
+
+This project utilizes data from:
+- **Global Data**: [dr5hn/countries-states-cities-database](https://github.com/dr5hn/countries-states-cities-database)
+- **Myanmar Specialized Data**: [Myanmar Information Management Unit (MIMU)](https://themimu.info/)
 
 ## Author
 
@@ -74,4 +52,4 @@ GitHub: [@nchanko](https://github.com/nchanko)
 
 ## License
 
-MIT License
+MIT License. Data remains property of its respective owners.

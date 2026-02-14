@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Country State API</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
             line-height: 1.6;
@@ -16,7 +21,7 @@
             position: relative;
             overflow-x: hidden;
         }
-        
+
         body::before {
             content: '';
             position: fixed;
@@ -24,19 +29,24 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: 
+            background:
                 conic-gradient(from 0deg at 20% 80%, transparent 0%, #7c3aed22 15%, transparent 30%),
                 conic-gradient(from 180deg at 80% 20%, transparent 0%, #06b6d422 15%, transparent 30%),
                 conic-gradient(from 90deg at 40% 60%, transparent 0%, #ec489922 10%, transparent 20%);
             animation: rotate 20s linear infinite;
             z-index: -1;
         }
-        
+
         @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
-        
+
         .hero {
             background: rgba(10, 10, 15, 0.95);
             backdrop-filter: blur(20px);
@@ -44,11 +54,11 @@
             padding: 100px 20px;
             text-align: center;
             position: relative;
-            box-shadow: 
+            box-shadow:
                 0 0 50px rgba(124, 58, 237, 0.1),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
-        
+
         .hero::before {
             content: '';
             position: absolute;
@@ -59,12 +69,19 @@
             background: linear-gradient(90deg, transparent, #7c3aed, #06b6d4, #ec4899, transparent);
             animation: borderGlow 3s ease-in-out infinite;
         }
-        
+
         @keyframes borderGlow {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
+
+            0%,
+            100% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
         }
-        
+
         .hero h1 {
             font-size: 4rem;
             background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 35%, #ec4899 70%, #f59e0b 100%);
@@ -79,7 +96,7 @@
             z-index: 1;
             filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.3));
         }
-        
+
         .hero p {
             font-size: 1.3rem;
             color: rgba(255, 255, 255, 0.8);
@@ -88,7 +105,7 @@
             position: relative;
             z-index: 1;
         }
-        
+
         .features {
             display: flex;
             flex-wrap: wrap;
@@ -98,37 +115,37 @@
             position: relative;
             z-index: 1;
         }
-        
+
         .feature:nth-child(1) {
-            background: linear-gradient(45deg, rgba(0,255,255,0.2), rgba(0,255,255,0.1));
-            border: 1px solid rgba(0,255,255,0.4);
-            box-shadow: 0 4px 15px rgba(0,255,255,0.2);
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.1));
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.2);
         }
-        
+
         .feature:nth-child(2) {
-            background: linear-gradient(45deg, rgba(0,255,65,0.2), rgba(0,255,65,0.1));
-            border: 1px solid rgba(0,255,65,0.4);
-            box-shadow: 0 4px 15px rgba(0,255,65,0.2);
+            background: linear-gradient(45deg, rgba(0, 255, 65, 0.2), rgba(0, 255, 65, 0.1));
+            border: 1px solid rgba(0, 255, 65, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 255, 65, 0.2);
         }
-        
+
         .feature:nth-child(3) {
-            background: linear-gradient(45deg, rgba(255,107,53,0.2), rgba(255,107,53,0.1));
-            border: 1px solid rgba(255,107,53,0.4);
-            box-shadow: 0 4px 15px rgba(255,107,53,0.2);
+            background: linear-gradient(45deg, rgba(255, 107, 53, 0.2), rgba(255, 107, 53, 0.1));
+            border: 1px solid rgba(255, 107, 53, 0.4);
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.2);
         }
-        
+
         .feature:nth-child(4) {
-            background: linear-gradient(45deg, rgba(255,0,85,0.2), rgba(255,0,85,0.1));
-            border: 1px solid rgba(255,0,85,0.4);
-            box-shadow: 0 4px 15px rgba(255,0,85,0.2);
+            background: linear-gradient(45deg, rgba(255, 0, 85, 0.2), rgba(255, 0, 85, 0.1));
+            border: 1px solid rgba(255, 0, 85, 0.4);
+            box-shadow: 0 4px 15px rgba(255, 0, 85, 0.2);
         }
-        
+
         .feature:nth-child(5) {
-            background: linear-gradient(45deg, rgba(0,255,255,0.15), rgba(255,107,53,0.15));
-            border: 1px solid rgba(0,255,255,0.4);
-            box-shadow: 0 4px 15px rgba(0,255,255,0.2);
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.15), rgba(255, 107, 53, 0.15));
+            border: 1px solid rgba(0, 255, 255, 0.4);
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.2);
         }
-        
+
         .feature {
             color: #ffffff;
             padding: 0.7rem 1.3rem;
@@ -136,73 +153,73 @@
             font-size: 0.9rem;
             transition: all 0.3s ease;
         }
-        
+
         .feature:hover {
             transform: translateY(-2px);
             filter: brightness(1.2);
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 40px 20px;
         }
-        
+
         .grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 2rem;
             margin-bottom: 3rem;
         }
-        
+
         .card:nth-child(1) {
-            background: linear-gradient(135deg, rgba(0,255,255,0.08) 0%, rgba(0,0,0,0.8) 100%);
-            border: 1px solid rgba(0,255,255,0.3);
-            box-shadow: 0 4px 20px rgba(0,255,255,0.1);
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0.8) 100%);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 255, 255, 0.1);
         }
-        
+
         .card:nth-child(2) {
-            background: linear-gradient(135deg, rgba(0,255,65,0.08) 0%, rgba(0,0,0,0.8) 100%);
-            border: 1px solid rgba(0,255,65,0.3);
-            box-shadow: 0 4px 20px rgba(0,255,65,0.1);
+            background: linear-gradient(135deg, rgba(0, 255, 65, 0.08) 0%, rgba(0, 0, 0, 0.8) 100%);
+            border: 1px solid rgba(0, 255, 65, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 255, 65, 0.1);
         }
-        
+
         .card:nth-child(3) {
-            background: linear-gradient(135deg, rgba(255,107,53,0.08) 0%, rgba(0,0,0,0.8) 100%);
-            border: 1px solid rgba(255,107,53,0.3);
-            box-shadow: 0 4px 20px rgba(255,107,53,0.1);
+            background: linear-gradient(135deg, rgba(255, 107, 53, 0.08) 0%, rgba(0, 0, 0, 0.8) 100%);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            box-shadow: 0 4px 20px rgba(255, 107, 53, 0.1);
         }
-        
+
         .card:nth-child(4) {
-            background: linear-gradient(135deg, rgba(255,0,85,0.08) 0%, rgba(0,0,0,0.8) 100%);
-            border: 1px solid rgba(255,0,85,0.3);
-            box-shadow: 0 4px 20px rgba(255,0,85,0.1);
+            background: linear-gradient(135deg, rgba(255, 0, 85, 0.08) 0%, rgba(0, 0, 0, 0.8) 100%);
+            border: 1px solid rgba(255, 0, 85, 0.3);
+            box-shadow: 0 4px 20px rgba(255, 0, 85, 0.1);
         }
-        
+
         .card:nth-child(5) {
-            background: linear-gradient(135deg, rgba(0,255,255,0.05) 0%, rgba(255,107,53,0.05) 50%, rgba(0,0,0,0.8) 100%);
-            border: 1px solid rgba(0,255,255,0.3);
-            box-shadow: 0 4px 20px rgba(0,255,255,0.1);
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.05) 0%, rgba(255, 107, 53, 0.05) 50%, rgba(0, 0, 0, 0.8) 100%);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 255, 255, 0.1);
         }
-        
+
         .card:nth-child(6) {
-            background: linear-gradient(135deg, rgba(255,0,85,0.05) 0%, rgba(0,255,65,0.05) 50%, rgba(0,0,0,0.8) 100%);
-            border: 1px solid rgba(255,0,85,0.3);
-            box-shadow: 0 4px 20px rgba(255,0,85,0.1);
+            background: linear-gradient(135deg, rgba(255, 0, 85, 0.05) 0%, rgba(0, 255, 65, 0.05) 50%, rgba(0, 0, 0, 0.8) 100%);
+            border: 1px solid rgba(255, 0, 85, 0.3);
+            box-shadow: 0 4px 20px rgba(255, 0, 85, 0.1);
         }
-        
+
         .card {
             border-radius: 12px;
             padding: 2rem;
             transition: all 0.3s ease;
             backdrop-filter: blur(10px);
         }
-        
+
         .card:hover {
             transform: translateY(-5px);
             filter: brightness(1.1);
         }
-        
+
         .card h2 {
             background: linear-gradient(45deg, #00ffff, #ff6b35, #00ff41, #ff0055);
             -webkit-background-clip: text;
@@ -211,50 +228,50 @@
             margin-bottom: 1rem;
             font-size: 1.5rem;
         }
-        
+
         .card ul {
             color: #b0b0b0;
         }
-        
+
         .card ul li {
             margin-bottom: 0.5rem;
         }
-        
+
         .card ul li strong {
             color: #ffffff;
         }
-        
+
         .card p {
             color: #b0b0b0;
         }
-        
+
         .endpoint {
-            background: rgba(0,255,255,0.05);
+            background: rgba(0, 255, 255, 0.05);
             border-left: 4px solid #00ffff;
             padding: 1rem;
             margin: 1rem 0;
             border-radius: 0 8px 8px 0;
-            border: 1px solid rgba(0,255,255,0.2);
+            border: 1px solid rgba(0, 255, 255, 0.2);
         }
-        
+
         .endpoint:nth-child(2) {
             border-left-color: #00ff41;
-            border-color: rgba(0,255,65,0.2);
-            background: rgba(0,255,65,0.05);
+            border-color: rgba(0, 255, 65, 0.2);
+            background: rgba(0, 255, 65, 0.05);
         }
-        
+
         .endpoint:nth-child(3) {
             border-left-color: #ff6b35;
-            border-color: rgba(255,107,53,0.2);
-            background: rgba(255,107,53,0.05);
+            border-color: rgba(255, 107, 53, 0.2);
+            background: rgba(255, 107, 53, 0.05);
         }
-        
+
         .endpoint:nth-child(4) {
             border-left-color: #ff0055;
-            border-color: rgba(255,0,85,0.2);
-            background: rgba(255,0,85,0.05);
+            border-color: rgba(255, 0, 85, 0.2);
+            background: rgba(255, 0, 85, 0.05);
         }
-        
+
         .method {
             background: linear-gradient(45deg, #00ffff, #ff6b35);
             color: #000000;
@@ -263,22 +280,25 @@
             font-size: 0.8rem;
             font-weight: bold;
         }
-        
+
         .endpoint-url {
             font-family: 'Monaco', 'Courier New', monospace;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             color: #ffffff;
             padding: 0.25rem 0.5rem;
             border-radius: 4px;
-            margin: 0 0.5rem;
-            border: 1px solid rgba(255,255,255,0.2);
+            margin: 0.5rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: inline-block;
+            word-break: break-all;
+            max-width: 100%;
         }
-        
+
         .endpoint p {
             color: #b0b0b0;
             margin: 0.5rem 0;
         }
-        
+
         .try-link {
             background: linear-gradient(45deg, #00ffff, #ff6b35, #00ff41, #ff0055);
             -webkit-background-clip: text;
@@ -288,52 +308,52 @@
             font-weight: 500;
             transition: all 0.2s ease;
         }
-        
+
         .try-link:hover {
             filter: brightness(1.3);
-            text-shadow: 0 0 5px rgba(255,255,255,0.3);
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
         }
-        
+
         .code-block {
-            background: rgba(0,0,0,0.9);
+            background: rgba(0, 0, 0, 0.9);
             color: #00ffff;
             padding: 1.5rem;
             border-radius: 8px;
             overflow-x: auto;
             font-family: 'Monaco', 'Courier New', monospace;
             font-size: 0.9rem;
-            border: 1px solid rgba(0,255,255,0.3);
-            box-shadow: inset 0 0 20px rgba(0,255,255,0.1);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.1);
         }
-        
+
         .btn {
             display: inline-block;
-            background: linear-gradient(45deg, rgba(0,255,255,0.8), rgba(255,107,53,0.8));
+            background: linear-gradient(45deg, rgba(0, 255, 255, 0.8), rgba(255, 107, 53, 0.8));
             color: #000000;
             padding: 0.75rem 1.5rem;
             text-decoration: none;
             border-radius: 8px;
             margin: 0.5rem 0.5rem 0.5rem 0;
             transition: all 0.3s ease;
-            border: 1px solid rgba(0,255,255,0.4);
+            border: 1px solid rgba(0, 255, 255, 0.4);
             font-weight: bold;
         }
-        
+
         .btn:hover {
-            background: linear-gradient(45deg, rgba(0,255,255,1), rgba(255,107,53,1));
+            background: linear-gradient(45deg, rgba(0, 255, 255, 1), rgba(255, 107, 53, 1));
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,255,255,0.4);
+            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.4);
         }
-        
+
         .footer {
-            background: rgba(0,0,0,0.8);
+            background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(15px);
             padding: 2rem 0;
             text-align: center;
             color: #b0b0b0;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
+
         .footer a {
             background: linear-gradient(45deg, #00ffff, #ff6b35, #00ff41, #ff0055);
             -webkit-background-clip: text;
@@ -342,27 +362,44 @@
             text-decoration: none;
             transition: all 0.2s ease;
         }
-        
+
         .footer a:hover {
             filter: brightness(1.3);
         }
-        
+
         @media (max-width: 768px) {
-            .hero h1 { font-size: 2rem; }
-            .hero p { font-size: 1rem; }
-            .features { gap: 0.5rem; }
-            .card { padding: 1.5rem; }
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .features {
+                gap: 0.5rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
         }
     </style>
 </head>
+
 <body>
     <div class="hero">
+        <div
+            style="position: absolute; top: 20px; right: 20px; font-size: 0.8rem; background: rgba(124, 58, 237, 0.2); color: #7c3aed; padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(124, 58, 237, 0.4);">
+            v1.1.0
+        </div>
         <h1>🌍 Country State API</h1>
-        <p>Fast, reliable API for countries and states. Perfect for dropdowns, forms, and international applications.</p>
-        
+        <p>Fast, reliable API for countries and states. Perfect for dropdowns, forms, and international applications.
+        </p>
+
         <div class="features">
-            <span class="feature">🚀 Fast & Cached</span>
-            <span class="feature">🛡️ Rate Limited</span>
+            <span class="feature">🚀 Fast & Redis Cached</span>
+            <span class="feature">🛡️ Redis-Backed Limits</span>
             <span class="feature">📞 Phone Codes</span>
             <span class="feature">🌍 Regions & Flags</span>
             <span class="feature">🔍 Search Ready</span>
@@ -376,71 +413,69 @@
                 <div class="code-block">curl https://your-api-domain.com/v1/countries</div>
                 <p style="margin-top: 1rem;">Get started in seconds. No authentication required for public use.</p>
             </div>
-            
+
             <div class="card">
                 <h2>📊 What You Get</h2>
                 <ul>
                     <li><strong>249 Countries</strong> with complete data</li>
                     <li><strong>States & Provinces</strong> for all countries</li>
-                    <li><strong>Phone codes</strong> for international dialing</li>
+                    <li><strong>150,000+ Cities</strong> with coordinates</li>
+                    <li><strong>Phone codes</strong> & <strong>local names</strong></li>
                     <li><strong>6 World regions</strong> with subregions</li>
                     <li><strong>Currencies & flags</strong> included</li>
                 </ul>
             </div>
-            
+
             <div class="card">
                 <h2>🔗 Main Endpoints</h2>
-                
+
                 <div class="endpoint">
-                    <span class="method">GET</span><span class="endpoint-url">/v1/countries</span>
+                    <span class="method">GET</span><br>
+                    <span class="endpoint-url">/v1/countries</span>
                     <p>All countries with phone codes and flags</p>
                     <a href="/v1/countries" target="_blank" class="try-link">→ Try it</a>
                 </div>
-                
+
                 <div class="endpoint">
-                    <span class="method">GET</span><span class="endpoint-url">/v1/countries/US/states</span>
-                    <p>Get states for a specific country</p>
-                    <a href="/v1/countries/US/states" target="_blank" class="try-link">→ Try it</a>
+                    <span class="method">GET</span><br>
+                    <span class="endpoint-url">/v1/countries/US/states/California/cities</span>
+                    <p>Get cities for a specific state</p>
+                    <a href="/v1/countries/US/states/California/cities" target="_blank" class="try-link">→ Try it</a>
                 </div>
-                
+
                 <div class="endpoint">
-                    <span class="method">GET</span><span class="endpoint-url">/v1/regions</span>
-                    <p>All world regions and their countries</p>
-                    <a href="/v1/regions" target="_blank" class="try-link">→ Try it</a>
-                </div>
-                
-                <div class="endpoint">
-                    <span class="method">GET</span><span class="endpoint-url">/v1/search/phone-code/1</span>
-                    <p>Find countries by phone code</p>
-                    <a href="/v1/search/phone-code/1" target="_blank" class="try-link">→ Try it</a>
+                    <span class="method">GET</span><br>
+                    <span class="endpoint-url">/v1/search/cities?q=Tokyo</span>
+                    <p>Global search for cities</p>
+                    <a href="/v1/search/cities?q=Tokyo" target="_blank" class="try-link">→ Try it</a>
                 </div>
             </div>
-            
+
             <div class="card">
                 <h2>💡 Use Cases</h2>
                 <ul>
-                    <li><strong>Address forms</strong> with country → state cascading dropdowns</li>
+                    <li><strong>Address forms</strong> with country → state → city search</li>
                     <li><strong>Phone validation</strong> with country codes</li>
-                    <li><strong>E-commerce</strong> shipping validation & regional pricing</li>
-                    <li><strong>Analytics</strong> with regional & state-level grouping</li>
-                    <li><strong>Travel apps</strong> with location browsing</li>
+                    <li><strong>E-commerce</strong> shipping & regional pricing</li>
+                    <li><strong>Travel & Logistics</strong> city data & coordinates</li>
+                    <li><strong>Localized UI</strong> with name_local support</li>
                 </ul>
             </div>
-            
+
             <div class="card">
                 <h2>🛠️ Integration</h2>
                 <div class="code-block">// Get countries with flags
-const countries = await fetch('/v1/countries')
-  .then(r => r.json());
+                    const countries = await fetch('/v1/countries')
+                    .then(r => r.json());
 
-// Populate dropdown
-countrySelect.innerHTML = countries.map(c => 
-  `&lt;option value="${c.code}"&gt;
-    ${c.flag} ${c.name} (${c.phone_code})
-  &lt;/option&gt;`
-).join('');</div>
+                    // Populate dropdown
+                    countrySelect.innerHTML = countries.map(c =>
+                    `&lt;option value="${c.code}"&gt;
+                    ${c.flag} ${c.name} (${c.phone_code})
+                    &lt;/option&gt;`
+                    ).join('');</div>
             </div>
-            
+
             <div class="card">
                 <h2>📚 Documentation</h2>
                 <p>Explore the full API with interactive documentation.</p>
@@ -454,7 +489,9 @@ countrySelect.innerHTML = countries.map(c =>
 
     <div class="footer">
         <p>✨ Built with FastAPI • 🚀 Optimized for performance • 🌐 Ready for production</p>
-        <p>Created by <a href="https://github.com/nchanko" target="_blank">Nyein Chan Ko Ko</a> • Open Source under MIT License</p>
+        <p>Created by <a href="https://github.com/nchanko" target="_blank">Nyein Chan Ko Ko</a> • Open Source under MIT
+            License</p>
     </div>
 </body>
+
 </html>
