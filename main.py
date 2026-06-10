@@ -1,7 +1,6 @@
 import json
 import os
 import redis
-from functools import lru_cache
 from typing import List, Optional
 from dotenv import load_dotenv
 
@@ -22,8 +21,8 @@ RATE_LIMIT_HEAVY = os.getenv("RATE_LIMIT_HEAVY", "200")
 RATE_LIMIT_METADATA = os.getenv("RATE_LIMIT_METADATA", "100")
 
 # Redis Connection Configuration
-REDIS_HOST = os.getenv("REDIS_HOST") or os.getenv("REDISHOST") or "localhost"
-REDIS_PORT = int(os.getenv("REDIS_PORT") or os.getenv("REDISPORT") or 6379)
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 REDIS_SSL = os.getenv("REDIS_SSL", "False").lower() == "true"
 
@@ -74,8 +73,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# (Redis code was moved above to initialize Limiter with it)
-
 # Setup templates and router
 templates = Jinja2Templates(directory="templates")
 v1_router = APIRouter(prefix="/v1", tags=["v1"])
@@ -115,56 +112,87 @@ class Region(BaseModel):
     subregions: List[str] = []
     countries: List[str] = []
 
-# Load and process data at startup
-def find_state_relaxedly(country_code: str, state_name: str, country_lookup_map: dict):
-    """Helper to find a state in a country using exact then relaxed matching"""
-    if country_code not in country_lookup_map:
+# ---------------------------------------------------------------------------
+# Global lookup structures (populated once at startup)
+# ---------------------------------------------------------------------------
+
+# {country_code: Country}
+country_lookup: dict = {}
+# {country_code: {state_name_lower: State}}  – kept for O(1) state resolution
+state_lookup: dict = {}
+# Lightweight city search index – only kept when Redis is NOT available
+# Each entry: {"n": name, "nl": name_local, "s": state_name, "c": country_code,
+#              "lat": float|None, "lon": float|None}
+city_search_index: list = []
+
+# In-memory response caches for endpoints that have no per-request variance
+# (lru_cache cannot be used on FastAPI handlers directly because Request is
+#  always a new object, making every call a cache miss)
+_cache: dict = {}
+
+
+def find_state_relaxedly(country_code: str, state_name: str):
+    """O(1) exact lookup then O(n) relaxed fallback using the global state_lookup."""
+    states_by_name = state_lookup.get(country_code)
+    if not states_by_name:
         return None
-    
-    country = country_lookup_map[country_code]
+
     target = state_name.lower().strip()
-    
-    # 1. Exact match
-    state = next((s for s in (country.states or []) if s.name.lower() == target), None)
+
+    # 1. Exact match – O(1)
+    state = states_by_name.get(target)
     if state:
         return state
-        
-    # 2. Relaxed match (substring)
-    return next((s for s in (country.states or []) 
-                if target in s.name.lower() or s.name.lower() in target), None)
+
+    # 2. Starts-with, then substring – O(n) over states in this country only
+    state = next((s for s in states_by_name.values() if s.name.lower().startswith(target)), None)
+    if state:
+        return state
+
+    return next(
+        (s for s in states_by_name.values()
+         if target in s.name.lower() or s.name.lower() in target),
+        None,
+    )
+
 
 def load_data():
-    with open('data.json', 'r', encoding='utf-8') as file:
-        countries_data = json.load(file)
-    
-    with open('regions.json', 'r', encoding='utf-8') as file:
-        regions_data = json.load(file)
-    
-    all_countries = [Country(**country) for country in countries_data]
-    country_lookup = {country.code: country for country in all_countries}
+    global city_search_index, state_lookup
 
-    # Populate City Data
-    global city_search_index
-    city_search_index = []
+    with open('data.json', 'r', encoding='utf-8') as f:
+        countries_data = json.load(f)
+
+    with open('regions.json', 'r', encoding='utf-8') as f:
+        regions_data = json.load(f)
+
+    all_countries = [Country(**c) for c in countries_data]
+    c_lookup = {c.code: c for c in all_countries}
+
+    # Build the global state_lookup dict once – reused by every request
+    s_lookup = {
+        c.code: {s.name.lower(): s for s in (c.states or [])}
+        for c in all_countries
+    }
 
     if os.path.exists('world_cities.json'):
         try:
             with open('world_cities.json', 'r', encoding='utf-8') as f:
                 world_cities = json.load(f)
-            
-            # Automatic Redis Auto-Loading
+
+            # Automatic Redis population (runs once; guarded by a Redis marker)
             if USE_REDIS:
                 try:
                     if not redis_client.get("system:cities_loaded"):
                         print("Redis data marker missing. Starting automatic data synchronization...")
                         data_by_state = {}
                         for city in world_cities:
-                            c_code, s_name = city["country_code"], city["state_name"]
+                            c_code = city["country_code"]
+                            s_name = city["state_name"]
                             key = f"cities:{c_code.upper()}:{s_name.lower().replace(' ', '_')}"
                             if key not in data_by_state:
                                 data_by_state[key] = []
                             data_by_state[key].append(city)
-                        
+
                         pipe = redis_client.pipeline()
                         for key, cities_list in data_by_state.items():
                             pipe.set(key, json.dumps(cities_list, ensure_ascii=False))
@@ -174,164 +202,208 @@ def load_data():
                 except Exception as e:
                     print(f"Warning: Failed to auto-populate Redis: {e}")
 
-            state_lookup = {c.code: {s.name.lower(): s for s in (c.states or [])} for c in all_countries}
-
+            # Build search index and optionally load full city objects into RAM.
+            # When Redis is available we only need the lightweight search index
+            # (name + state + country) so we can answer /search/cities quickly
+            # without holding lat/lon data in RAM.
+            _city_index = []
             for city in world_cities:
-                c_code, s_name = city["country_code"], city["state_name"]
-                
-                # Build lightweight search index for both modes
+                c_code = city["country_code"]
+                s_name = city["state_name"]
                 city_name_local = city.get("name_local", city.get("name_mm", ""))
-                city_search_index.append({
-                    "n": city["name"], 
-                    "nl": city_name_local, 
-                    "s": s_name, 
-                    "c": c_code
-                })
 
-                # Ensure dynamic state creation (common for both modes)
-                if c_code in state_lookup and s_name.lower() not in state_lookup[c_code]:
+                # Ensure state exists (create a stub if the city file references
+                # a state not present in data.json)
+                if c_code in s_lookup and s_name.lower() not in s_lookup[c_code]:
                     new_state = State(name=s_name, cities=[])
-                    country_lookup[c_code].states.append(new_state)
-                    state_lookup[c_code][s_name.lower()] = new_state
+                    c_lookup[c_code].states.append(new_state)
+                    s_lookup[c_code][s_name.lower()] = new_state
 
-                # Only load full city objects into RAM if Redis is NOT used
-                if not USE_REDIS:
-                    state = find_state_relaxedly(c_code, s_name, country_lookup)
-                    if state:
-                        if not state.cities: state.cities = []
+                if USE_REDIS:
+                    # Lightweight index only – no lat/lon to save RAM
+                    _city_index.append({
+                        "n": city["name"],
+                        "nl": city_name_local,
+                        "s": s_name,
+                        "c": c_code,
+                    })
+                else:
+                    # Full in-memory mode: attach City objects to State nodes AND
+                    # keep lat/lon in the search index so /search/cities can return them
+                    # Use s_lookup directly for O(1) exact match
+                    state = s_lookup.get(c_code, {}).get(s_name.lower())
+                    if state is None:
+                        # Relaxed fallback for mismatched state names
+                        states_by_name = s_lookup.get(c_code, {})
+                        target = s_name.lower().strip()
+                        state = next(
+                            (s for s in states_by_name.values() if s.name.lower().startswith(target)),
+                            None,
+                        ) or next(
+                            (s for s in states_by_name.values()
+                             if target in s.name.lower() or s.name.lower() in target),
+                            None,
+                        )
+                    if state is not None:
+                        if not state.cities:
+                            state.cities = []
+                        lat = city.get("latitude")
+                        lon = city.get("longitude")
                         state.cities.append(City(
                             name=city["name"],
-                            name_local=city.get("name_local", city.get("name_mm", "")),
-                            latitude=city.get("latitude"),
-                            longitude=city.get("longitude")
+                            name_local=city_name_local,
+                            latitude=float(lat) if lat is not None else None,
+                            longitude=float(lon) if lon is not None else None,
                         ))
-            
+
+                    _city_index.append({
+                        "n": city["name"],
+                        "nl": city_name_local,
+                        "s": s_name,
+                        "c": c_code,
+                        "lat": float(city["latitude"]) if city.get("latitude") is not None else None,
+                        "lon": float(city["longitude"]) if city.get("longitude") is not None else None,
+                    })
+
+            # Discard the raw list to free ~23 MB of parsed JSON
+            del world_cities
+
+            city_search_index = _city_index
             mode_msg = "Redis (On-demand)" if USE_REDIS else "In-Memory (Heavy)"
             print(f"City data initialized in {mode_msg} mode. Indexed {len(city_search_index)} cities.")
-            
+
         except Exception as e:
             print(f"Warning: Failed to load city data: {e}")
-    
-    return all_countries, country_lookup, regions_data
+
+    state_lookup = s_lookup
+    return all_countries, c_lookup, regions_data
+
 
 all_countries, country_lookup, regions_lookup = load_data()
+
+# ---------------------------------------------------------------------------
+# Pre-build the static responses that never change so handlers just return them
+# ---------------------------------------------------------------------------
+_countries_response: List[CountryBase] = [
+    CountryBase(code=c.code, name=c.name, phone_code=c.phone_code, flag=c.flag)
+    for c in all_countries
+]
+
+_regions_response: List[Region] = [
+    Region(name=rname, subregions=rdata["subregions"], countries=rdata["countries"])
+    for rname, rdata in regions_lookup.items()
+]
+
+# {region_key_lower: List[CountryWithRegion]} – built lazily, cached forever
+_region_countries_cache: dict = {}
+
+# {country_code: List[State]} – states list is already in country_lookup but we
+# cache the serialised list so the same list object is returned every time
+_states_cache: dict = {}
+
 
 @app.get("/")
 @limiter.limit(f"{RATE_LIMIT_METADATA}/minute")
 def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
+
 @v1_router.get("/countries", response_model=List[CountryBase])
 @limiter.limit(f"{RATE_LIMIT_DEFAULT}/minute")
-@lru_cache(maxsize=1)
 def get_countries(request: Request):
     """Get all countries - optimized for dropdown usage"""
-    return [CountryBase(
-        code=country.code,
-        name=country.name,
-        phone_code=country.phone_code,
-        flag=country.flag
-    ) for country in all_countries]
+    return _countries_response
+
 
 @v1_router.get("/countries/{country_code}/states", response_model=List[State])
 @limiter.limit(f"{RATE_LIMIT_DEFAULT}/minute")
-@lru_cache(maxsize=256)
 def get_states(request: Request, country_code: str):
     """Get all states for a specific country"""
     country_code = country_code.upper()
-    
+
     if country_code not in country_lookup:
         raise HTTPException(status_code=404, detail="Country not found")
-    
-    country = country_lookup[country_code]
-    return country.states or []
+
+    if country_code not in _states_cache:
+        _states_cache[country_code] = country_lookup[country_code].states or []
+
+    return _states_cache[country_code]
+
 
 @v1_router.get("/countries/{country_code}/states/{state_name}/cities", response_model=List[City])
 @limiter.limit(f"{RATE_LIMIT_DEFAULT}/minute")
-@lru_cache(maxsize=1024)
 def get_cities(request: Request, country_code: str, state_name: str):
     """Get all cities for a specific state in a country"""
     country_code = country_code.upper()
-    
+
     # Try Redis first if available
     if USE_REDIS:
-        # Search for key using normalization and relaxed matching
-        state = find_state_relaxedly(country_code, state_name, country_lookup)
+        state = find_state_relaxedly(country_code, state_name)
         if state:
             key = f"cities:{country_code}:{state.name.lower().replace(' ', '_')}"
             cities_data = redis_client.get(key)
             if cities_data:
                 raw_cities = json.loads(cities_data)
-                # Map name_mm to name_local if missing (compatibility check)
+                # Normalise name_mm -> name_local for older data
                 for c in raw_cities:
                     if "name_local" not in c and "name_mm" in c:
                         c["name_local"] = c["name_mm"]
                 return raw_cities
 
     # Fallback to in-memory lookup
-    state = find_state_relaxedly(country_code, state_name, country_lookup)
+    state = find_state_relaxedly(country_code, state_name)
     if not state:
         raise HTTPException(status_code=404, detail="State not found")
-        
+
     return state.cities or []
+
 
 @v1_router.get("/search/countries", response_model=List[CountryBase])
 @limiter.limit(f"{RATE_LIMIT_HEAVY}/minute")
 def search_countries(request: Request, q: str = Query(..., description="Search query for country name")):
     """Search countries by name"""
     query = q.lower().strip()
-    
+
     if not query:
         return []
-    
-    results = [
-        CountryBase(
-            code=country.code,
-            name=country.name,
-            phone_code=country.phone_code,
-            flag=country.flag
-        )
-        for country in all_countries
-        if query in country.name.lower()
-    ]
-    
+
+    results = [c for c in _countries_response if query in c.name.lower()]
     return results[:20]
+
+
+# Pre-build a flat state list for fast O(n) search – built once at startup
+_all_states_flat: List[dict] = [
+    {"name": state.name, "country_code": country.code, "country_name": country.name}
+    for country in all_countries
+    if country.states
+    for state in country.states
+]
+
 
 @v1_router.get("/search/states", response_model=List[dict])
 @limiter.limit(f"{RATE_LIMIT_HEAVY}/minute")
 def search_states(request: Request, q: str = Query(..., description="Search query for state name")):
     """Search states by name across all countries"""
     query = q.lower().strip()
-    
+
     if not query:
         return []
-    
-    results = [
-        {
-            "name": state.name,
-            "country_code": country.code,
-            "country_name": country.name
-        }
-        for country in all_countries
-        if country.states
-        for state in country.states
-        if query in state.name.lower()
-    ]
-    
+
+    results = [s for s in _all_states_flat if query in s["name"].lower()]
     return results[:20]
+
 
 @v1_router.get("/search/cities", response_model=List[dict])
 @limiter.limit(f"{RATE_LIMIT_HEAVY}/minute")
 def search_cities(request: Request, q: str = Query(..., description="Search query for city name")):
     """Search cities by name across all countries"""
     query = q.lower().strip()
-    
+
     if not query:
         return []
-    
+
     results = []
-    
-    # If using Redis, use our lightweight search index
+
     if USE_REDIS:
         for city in city_search_index:
             if query in city["n"].lower() or (city["nl"] and query in city["nl"].lower()):
@@ -342,79 +414,77 @@ def search_cities(request: Request, q: str = Query(..., description="Search quer
                     "state_name": city["s"],
                     "country_code": city["c"],
                     "country_name": country.name if country else city["c"],
-                    "latitude": None, # Latitude/Longitude not in lightweight index
-                    "longitude": None
+                    "latitude": None,
+                    "longitude": None,
                 })
                 if len(results) >= 50:
-                    return results
+                    break
         return results
 
-    # Global search using in-memory data (Fallback Mode)
-    for country in all_countries:
-        if not country.states:
-            continue
-        for state in country.states:
-            if not state.cities:
-                continue
-            for city in state.cities:
-                if query in city.name.lower() or (city.name_local and query in city.name_local):
-                    results.append({
-                        "name": city.name,
-                        "name_local": city.name_local,
-                        "state_name": state.name,
-                        "country_code": country.code,
-                        "country_name": country.name,
-                        "latitude": city.latitude,
-                        "longitude": city.longitude
-                    })
-                    if len(results) >= 50:
-                        return results
-    
+    # In-memory fallback: index includes lat/lon
+    for city in city_search_index:
+        if query in city["n"].lower() or (city["nl"] and query in city["nl"].lower()):
+            country = country_lookup.get(city["c"])
+            results.append({
+                "name": city["n"],
+                "name_local": city["nl"],
+                "state_name": city["s"],
+                "country_code": city["c"],
+                "country_name": country.name if country else city["c"],
+                "latitude": city.get("lat"),
+                "longitude": city.get("lon"),
+            })
+            if len(results) >= 50:
+                break
+
     return results
+
 
 @v1_router.get("/regions", response_model=List[Region])
 @limiter.limit(f"{RATE_LIMIT_DEFAULT}/minute")
-@lru_cache(maxsize=1)
 def get_regions(request: Request):
     """Get all regions with their subregions and countries"""
-    return [
-        Region(
-            name=region_name,
-            subregions=region_data["subregions"],
-            countries=region_data["countries"]
-        )
-        for region_name, region_data in regions_lookup.items()
-    ]
+    return _regions_response
+
 
 @v1_router.get("/regions/{region}/countries", response_model=List[CountryWithRegion])
 @limiter.limit(f"{RATE_LIMIT_DEFAULT}/minute")
-@lru_cache(maxsize=10)
 def get_countries_by_region(request: Request, region: str):
     """Get all countries in a specific region"""
+    region_lower = region.lower()
+
+    if region_lower in _region_countries_cache:
+        return _region_countries_cache[region_lower]
+
     region_key = next(
-        (key for key in regions_lookup.keys() if key.lower() == region.lower()),
-        None
+        (key for key in regions_lookup.keys() if key.lower() == region_lower),
+        None,
     )
-    
+
     if not region_key:
         raise HTTPException(status_code=404, detail="Region not found")
-    
+
     country_codes = set(regions_lookup[region_key]["countries"])
-    
-    results = [
-        CountryWithRegion(
-            code=country.code,
-            name=country.name,
-            region=country.region,
-            subregion=country.subregion,
-            phone_code=country.phone_code,
-            flag=country.flag
-        )
-        for country in all_countries
-        if country.code in country_codes
-    ]
-    
-    return sorted(results, key=lambda x: x.name)
+
+    results = sorted(
+        [
+            CountryWithRegion(
+                code=c.code,
+                name=c.name,
+                region=c.region,
+                subregion=c.subregion,
+                phone_code=c.phone_code,
+                flag=c.flag,
+            )
+            for c in all_countries
+            if c.code in country_codes
+        ],
+        key=lambda x: x.name,
+    )
+
+    _region_countries_cache[region_lower] = results
+    return results
+
 
 @v1_router.get("/search/phone-code/{code}", response_model=List[CountryBase])
 @limiter.limit(f"{RATE_LIMIT_HEAVY}/minute")
@@ -423,34 +493,28 @@ def search_by_phone_code(request: Request, code: str):
     search_code = code.strip()
     if not search_code.startswith('+'):
         search_code = '+' + search_code
-    
+
     results = [
-        CountryBase(
-            code=country.code,
-            name=country.name,
-            phone_code=country.phone_code,
-            flag=country.flag
-        )
-        for country in all_countries
-        if country.phone_code == search_code or country.phone_code.startswith(search_code)
+        c for c in _countries_response
+        if c.phone_code == search_code or c.phone_code.startswith(search_code)
     ]
-    
     return results[:10]
+
 
 @v1_router.get("/countries/{country_code}", response_model=Country)
 @limiter.limit(f"{RATE_LIMIT_DEFAULT}/minute")
 def get_country_details(request: Request, country_code: str):
     """Get detailed information about a specific country"""
     country_code = country_code.upper()
-    
+
     if country_code not in country_lookup:
         raise HTTPException(status_code=404, detail="Country not found")
-    
+
     return country_lookup[country_code]
 
-# Add version info endpoint
+
 @app.get("/version")
-@limiter.limit(f"{RATE_LIMIT_METADATA}/minute")  
+@limiter.limit(f"{RATE_LIMIT_METADATA}/minute")
 def get_version_info(request: Request):
     """Get API version information"""
     return {
@@ -458,14 +522,10 @@ def get_version_info(request: Request):
         "current_version": "v1",
         "version": "1.0.0",
         "available_versions": ["v1"],
-        "endpoints": {
-            "v1": "/v1/"
-        },
-        "documentation": {
-            "interactive": "/docs",
-            "redoc": "/redoc"
-        }
+        "endpoints": {"v1": "/v1/"},
+        "documentation": {"interactive": "/docs", "redoc": "/redoc"},
     }
+
 
 # Include the versioned router
 app.include_router(v1_router)
