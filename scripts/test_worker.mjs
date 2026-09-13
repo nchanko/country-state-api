@@ -124,7 +124,25 @@ async function runTests() {
   assert.strictEqual(res.status, 404);
   console.log("  ✓ Malformed URL returns 400; literal '%' in a region returns 404.");
 
-  console.log("\n🎉 ALL 10 VERIFICATION TESTS PASSED SUCCESSFULLY!");
+  // Test 11: CORS preflight on a static-asset path, answered like FastAPI's CORSMiddleware
+  console.log("\nTest 11: OPTIONS then GET /v1/countries (CORS preflight on an asset path)");
+  res = await worker.fetch(new Request("https://worker.local/v1/countries", {
+    method: "OPTIONS",
+    headers: {
+      Origin: "https://app.example",
+      "Access-Control-Request-Method": "GET",
+      "Access-Control-Request-Headers": "content-type",
+    },
+  }), env);
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.headers.get("access-control-allow-origin"), "https://app.example");
+  assert.strictEqual(res.headers.get("access-control-allow-headers"), "content-type");
+  res = await worker.fetch(new Request("https://worker.local/v1/countries"), env);
+  assert.strictEqual(res.status, 200);
+  assert((await res.json()).length > 200, "Expected the countries file through the Worker");
+  console.log("  ✓ Preflight echoes origin and headers; GET still serves the file.");
+
+  console.log("\n🎉 ALL 11 VERIFICATION TESTS PASSED SUCCESSFULLY!");
 }
 
 runTests().catch((err) => {

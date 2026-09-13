@@ -1,9 +1,11 @@
 /**
- * Handles only what static assets cannot: the search endpoints, and requests
- * whose path needs normalizing before it can hit a precomputed file.
+ * Most of the API is precomputed files under dist/. This Worker serves them,
+ * plus what files cannot do: the search endpoints, CORS preflight, and requests
+ * whose path needs normalizing before it can hit a file.
  *
- * Everything else in the API is a file under dist/ and is served by Cloudflare
- * before this code runs, which is why it costs nothing.
+ * It runs before static assets (run_worker_first in wrangler.jsonc) because
+ * Cloudflare answers OPTIONS on an asset path with 405 itself, which would
+ * break browser preflight.
  */
 
 import COUNTRIES from "./data/countries.json";
@@ -123,6 +125,24 @@ async function serveAsset(env: Env, base: URL, path: string): Promise<Response |
  */
 const seg = (s: string) => encodeURIComponent(s.trim().replace(/\s+/g, " "));
 
+/**
+ * Mirrors Starlette's CORSMiddleware as main.py configures it (any origin,
+ * credentials allowed), which echoes the origin and the requested headers.
+ */
+function preflight(request: Request): Response {
+  return new Response("OK", {
+    headers: {
+      "Access-Control-Allow-Origin": request.headers.get("Origin") ?? "*",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Allow-Methods": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+      "Access-Control-Allow-Headers": request.headers.get("Access-Control-Request-Headers") ?? "*",
+      "Access-Control-Max-Age": "600",
+      "Content-Type": "text/plain; charset=utf-8",
+      Vary: "Origin",
+    },
+  });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -134,15 +154,7 @@ export default {
       return json({ detail: "Malformed URL" }, 400);
     }
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "*",
-          "Access-Control-Allow-Headers": "*",
-        },
-      });
-    }
+    if (request.method === "OPTIONS") return preflight(request);
     if (request.method !== "GET" && request.method !== "HEAD") {
       return json({ detail: "Method Not Allowed" }, 405);
     }
@@ -170,6 +182,9 @@ export default {
         COUNTRIES.filter((c) => c.phone_code === code || c.phone_code.startsWith(code)).slice(0, 10),
       );
     }
+
+    const asset = await env.ASSETS.fetch(request);
+    if (asset.status !== 404) return asset;
 
     // Reaching here means no precomputed file matched, so the path is
     // non-canonical: wrong case, stray whitespace, or an inexact state name.
