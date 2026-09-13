@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import redis
 from typing import List, Optional
 from dotenv import load_dotenv
@@ -156,6 +157,72 @@ def find_state_relaxedly(country_code: str, state_name: str):
     )
 
 
+_WORD_RE = re.compile(r"\w+")
+
+
+def _same_word(a: str, b: str) -> bool:
+    """Equal, or one is the other plus a short inflection (Hesse/Hessen,
+    Silesia/Silesian). A longer tail is a different place: Derby is not
+    Derbyshire, Kyiv is not Kyivska."""
+    if a == b:
+        return True
+    short, long_ = sorted((a, b), key=len)
+    return len(short) >= 4 and long_.startswith(short) and len(long_) - len(short) <= 2
+
+
+def _word_run(outer: list, inner: list):
+    """Where inner first appears as a contiguous run of words in outer, as
+    (index, exact); exact is False if an inflection was needed. None if absent."""
+    n = len(inner)
+    for k in range(len(outer) - n + 1):
+        window = outer[k:k + n]
+        if all(_same_word(o, i) for o, i in zip(window, inner)):
+            return k, window == inner
+    return None
+
+
+def match_existing_state(name: str, states) -> Optional["State"]:
+    """Find the existing state a city file's state name refers to.
+
+    Best first: a state that starts with the name ('Berat' -> 'Berat County'),
+    then one containing it ('Barnet' -> 'London Borough of Barnet'), then one
+    contained in it. Exact words beat inflections, and fewer extra words win
+    ('Panamá' -> 'Panamá Province', not 'Panamá Oeste Province').
+    """
+    target = _WORD_RE.findall(name.lower())
+    if not target:
+        return None
+    best, best_score, tied = None, None, False
+    seen = set()
+    for state in states:
+        if id(state) in seen:  # s_lookup holds aliases of the same state
+            continue
+        seen.add(id(state))
+        words = _WORD_RE.findall(state.name.lower())
+        if not words:
+            continue
+        hit = _word_run(words, target)
+        if hit:
+            rank = 0 if hit[0] == 0 else 1
+        else:
+            hit = _word_run(target, words)
+            if not hit:
+                continue
+            rank = 2
+        score = (rank, not hit[1], len(words))
+        if best_score is None or score < best_score:
+            best, best_score, tied = state, score, False
+        elif score == best_score:
+            tied = True
+    # A tie among states that start with the name ('Berat County' vs 'Berat
+    # District') is one place at different admin levels, so the first wins.
+    # Any other tie is different places sharing a word ('Tobago' in Eastern and
+    # Western Tobago): return None so the caller makes a stub rather than guess.
+    if tied and best_score[0] != 0:
+        return None
+    return best
+
+
 def load_data():
     global city_search_index, state_lookup
 
@@ -212,12 +279,17 @@ def load_data():
                 s_name = city["state_name"]
                 city_name_local = city.get("name_local", city.get("name_mm", ""))
 
-                # Ensure state exists (create a stub if the city file references
-                # a state not present in data.json)
+                # Ensure state exists. The city file often names a state
+                # differently from data.json, so try a word-level match before
+                # creating a stub.
                 if c_code in s_lookup and s_name.lower() not in s_lookup[c_code]:
-                    new_state = State(name=s_name, cities=[])
-                    c_lookup[c_code].states.append(new_state)
-                    s_lookup[c_code][s_name.lower()] = new_state
+                    matched_state = match_existing_state(s_name, s_lookup[c_code].values())
+                    if matched_state:
+                        s_lookup[c_code][s_name.lower()] = matched_state
+                    else:
+                        new_state = State(name=s_name, cities=[])
+                        c_lookup[c_code].states.append(new_state)
+                        s_lookup[c_code][s_name.lower()] = new_state
 
                 if USE_REDIS:
                     # Lightweight index only – no lat/lon to save RAM
@@ -325,7 +397,8 @@ def get_states(request: Request, country_code: str):
         raise HTTPException(status_code=404, detail="Country not found")
 
     if country_code not in _states_cache:
-        _states_cache[country_code] = country_lookup[country_code].states or []
+        states_raw = country_lookup[country_code].states or []
+        _states_cache[country_code] = [State(name=s.name, cities=[]) for s in states_raw]
 
     return _states_cache[country_code]
 
@@ -510,7 +583,20 @@ def get_country_details(request: Request, country_code: str):
     if country_code not in country_lookup:
         raise HTTPException(status_code=404, detail="Country not found")
 
-    return country_lookup[country_code]
+    country = country_lookup[country_code]
+    return Country(
+        code=country.code,
+        name=country.name,
+        phone_code=country.phone_code,
+        flag=country.flag,
+        region=country.region,
+        subregion=country.subregion,
+        currency=country.currency,
+        currency_symbol=country.currency_symbol,
+        language=country.language,
+        population=country.population,
+        states=[State(name=s.name, cities=[]) for s in (country.states or [])],
+    )
 
 
 @app.get("/version")

@@ -1,0 +1,18 @@
+# The API responses are stored as .html files so that a file and a directory can
+# share a name (/v1/countries/AU and /v1/countries/AU/states both exist). Their
+# contents are JSON, so override the content-type Cloudflare infers from the
+# extension. Without this, every client would see text/html.
+
+/v1/*
+  Content-Type: application/json; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+
+/version
+  Content-Type: application/json; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=3600
+
+/_idx/*
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=86400

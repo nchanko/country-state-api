@@ -1,0 +1,17 @@
+{
+  "name": "country-state-api",
+  "private": true,
+  "scripts": {
+    "build": "./venv/bin/python scripts/export_static.py && ./venv/bin/python scripts/build_search.py && cp templates/index.html dist/index.html && cp _headers dist/_headers",
+    "dev": "wrangler dev",
+    "predeploy": "npm run build",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "npx esbuild src/index.ts --bundle --format=esm --outfile=scripts/bundle_for_test.mjs && node scripts/test_worker.mjs && rm -f scripts/bundle_for_test.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260710.1",
+    "typescript": "^5.7.3",
+    "wrangler": "^4.111.0"
+  }
+}

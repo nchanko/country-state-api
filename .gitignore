@@ -30,3 +30,9 @@ logs/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Node & Cloudflare
+node_modules/
+.wrangler/
+dist/
+scripts/bundle_for_test.mjs

@@ -1,0 +1,18 @@
+{
+  "name": "country-state-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-16",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    // Drops the .html extension when matching, so v1/countries/AU.html serves at
+    // /v1/countries/AU. The extension exists only so a file and a directory can
+    // share a name on disk; _headers restores the JSON content-type.
+    "html_handling": "auto-trailing-slash",
+    // Fall through to the Worker on a miss so it can normalize the path.
+    "not_found_handling": "none"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

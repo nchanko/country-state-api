@@ -3518,9 +3518,6 @@
       },
       {
         "name": "Zagreb"
-      },
-      {
-        "name": "Zagreb"
       }
     ]
   },
@@ -12408,9 +12405,6 @@
         "name": "Arecibo"
       },
       {
-        "name": "Arecibo"
-      },
-      {
         "name": "Arroyo"
       },
       {
@@ -12418,9 +12412,6 @@
       },
       {
         "name": "Barranquitas"
-      },
-      {
-        "name": "Bayamón"
       },
       {
         "name": "Bayamon"
@@ -12432,16 +12423,10 @@
         "name": "Caguas"
       },
       {
-        "name": "Caguas"
-      },
-      {
         "name": "Camuy"
       },
       {
         "name": "Canóvanas"
-      },
-      {
-        "name": "Carolina"
       },
       {
         "name": "Carolina"
@@ -12490,9 +12475,6 @@
       },
       {
         "name": "Guayanilla"
-      },
-      {
-        "name": "Guaynabo"
       },
       {
         "name": "Guaynabo"
@@ -12552,9 +12534,6 @@
         "name": "Mayagüez"
       },
       {
-        "name": "Mayagüez"
-      },
-      {
         "name": "Moca"
       },
       {
@@ -12574,9 +12553,6 @@
       },
       {
         "name": "Peñuelas"
-      },
-      {
-        "name": "Ponce"
       },
       {
         "name": "Ponce"
@@ -12603,9 +12579,6 @@
         "name": "San Juan"
       },
       {
-        "name": "San Juan"
-      },
-      {
         "name": "San Lorenzo"
       },
       {
@@ -12619,12 +12592,6 @@
       },
       {
         "name": "Toa Baja"
-      },
-      {
-        "name": "Toa Baja"
-      },
-      {
-        "name": "Trujillo Alto"
       },
       {
         "name": "Trujillo Alto"
@@ -15400,13 +15367,13 @@
         "name": "Chiayi"
       },
       {
-        "name": "Chiayi"
+        "name": "Chiayi County"
       },
       {
         "name": "Hsinchu"
       },
       {
-        "name": "Hsinchu"
+        "name": "Hsinchu County"
       },
       {
         "name": "Hualien"
@@ -17808,16 +17775,10 @@
         "name": "Alaska"
       },
       {
-        "name": "American Samoa"
-      },
-      {
         "name": "Arizona"
       },
       {
         "name": "Arkansas"
-      },
-      {
-        "name": "Baker Island"
       },
       {
         "name": "California"
@@ -17841,13 +17802,7 @@
         "name": "Georgia"
       },
       {
-        "name": "Guam"
-      },
-      {
         "name": "Hawaii"
-      },
-      {
-        "name": "Howland Island"
       },
       {
         "name": "Idaho"
@@ -17862,19 +17817,10 @@
         "name": "Iowa"
       },
       {
-        "name": "Jarvis Island"
-      },
-      {
-        "name": "Johnston Atoll"
-      },
-      {
         "name": "Kansas"
       },
       {
         "name": "Kentucky"
-      },
-      {
-        "name": "Kingman Reef"
       },
       {
         "name": "Louisiana"
@@ -17892,9 +17838,6 @@
         "name": "Michigan"
       },
       {
-        "name": "Midway Atoll"
-      },
-      {
         "name": "Minnesota"
       },
       {
@@ -17905,9 +17848,6 @@
       },
       {
         "name": "Montana"
-      },
-      {
-        "name": "Navassa Island"
       },
       {
         "name": "Nebraska"
@@ -17934,9 +17874,6 @@
         "name": "North Dakota"
       },
       {
-        "name": "Northern Mariana Islands"
-      },
-      {
         "name": "Ohio"
       },
       {
@@ -17944,9 +17881,6 @@
       },
       {
         "name": "Oregon"
-      },
-      {
-        "name": "Palmyra Atoll"
       },
       {
         "name": "Pennsylvania"
@@ -17970,12 +17904,6 @@
         "name": "Texas"
       },
       {
-        "name": "United States Minor Outlying Islands"
-      },
-      {
-        "name": "United States Virgin Islands"
-      },
-      {
         "name": "Utah"
       },
       {
@@ -17983,9 +17911,6 @@
       },
       {
         "name": "Virginia"
-      },
-      {
-        "name": "Wake Island"
       },
       {
         "name": "Washington"
