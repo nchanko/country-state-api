@@ -2,9 +2,9 @@
   "name": "country-state-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-07-16",
-  // Production hostname. Its proxied DNS record still points at the old
-  // Railway origin, but the route answers every request before it gets there.
-  "routes": [{ "pattern": "country-api.drnyeinchan.com/*", "zone_name": "drnyeinchan.com" }],
+  // Production hostname as a Custom Domain: Cloudflare creates and owns its DNS
+  // record and certificate, so there is no hand-made record to keep in sync.
+  "routes": [{ "pattern": "country-api.drnyeinchan.com", "custom_domain": true }],
   // Keep the workers.dev URL so a deploy can be checked outside production.
   "workers_dev": true,
   "assets": {
