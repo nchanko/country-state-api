@@ -5,492 +5,658 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Country State API</title>
+    <meta name="description" content="Free JSON API for countries, states and 154,000+ cities, with phone codes, flags, regions and local-language names.">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --bg: #f6f6f3;
+            --surface: #ffffff;
+            --surface-2: #efefeb;
+            --text: #1b1b1f;
+            --muted: #5c6068;
+            --border: #e2e2dc;
+            --accent: #0a66c2;
+            --accent-soft: #e7f0fa;
+            --get: #0b7a4b;
+            --get-soft: #e2f4eb;
+            --err: #b42318;
+            --err-soft: #fdecea;
+            --code-bg: #f4f4f0;
+            --key: #7a3db8;
+            --str: #0b7a4b;
+            --num: #b35900;
+            --lit: #0a66c2;
+            --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 6px 20px rgba(0, 0, 0, .04);
+            --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+            color-scheme: light;
         }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0e1013;
+                --surface: #15181d;
+                --surface-2: #1c2026;
+                --text: #e7e7e4;
+                --muted: #9ba1a9;
+                --border: #272c33;
+                --accent: #6cb0ff;
+                --accent-soft: #16263a;
+                --get: #4cd39a;
+                --get-soft: #12291f;
+                --err: #ff8a80;
+                --err-soft: #3a1714;
+                --code-bg: #111418;
+                --key: #c79bff;
+                --str: #6fd9a8;
+                --num: #ffb366;
+                --lit: #6cb0ff;
+                --shadow: none;
+                color-scheme: dark;
+            }
+        }
+
+        * { box-sizing: border-box; }
 
         body {
-            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-            line-height: 1.6;
-            background: #0a0a0f;
-            color: #ffffff;
-            min-height: 100vh;
-            position: relative;
-            overflow-x: hidden;
+            margin: 0;
+            padding-inline: 20px;
+            background: var(--bg);
+            color: var(--text);
+            font: 15px/1.6 var(--sans);
+            -webkit-font-smoothing: antialiased;
         }
 
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background:
-                conic-gradient(from 0deg at 20% 80%, transparent 0%, #7c3aed22 15%, transparent 30%),
-                conic-gradient(from 180deg at 80% 20%, transparent 0%, #06b6d422 15%, transparent 30%),
-                conic-gradient(from 90deg at 40% 60%, transparent 0%, #ec489922 10%, transparent 20%);
-            animation: rotate 20s linear infinite;
-            z-index: -1;
+        .wrap { max-width: 1080px; margin: 0 auto; }
+
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        code, pre, kbd { font-family: var(--mono); font-size: 0.86em; }
+
+        :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+        /* Header */
+        header { padding-block: 56px 32px; }
+
+        .eyebrow {
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+            color: var(--muted);
+            font-size: 0.85rem;
+            margin-bottom: 12px;
         }
 
-        @keyframes rotate {
-            0% {
-                transform: rotate(0deg);
-            }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--get); }
 
-            100% {
-                transform: rotate(360deg);
-            }
-        }
+        h1 { font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.15; margin: 0 0 12px; letter-spacing: -0.02em; }
 
-        .hero {
-            background: rgba(10, 10, 15, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(124, 58, 237, 0.3);
-            padding: 100px 20px;
-            text-align: center;
-            position: relative;
-            box-shadow:
-                0 0 50px rgba(124, 58, 237, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.1);
-        }
+        .lede { font-size: 1.1rem; color: var(--muted); max-width: 640px; margin: 0 0 24px; }
 
-        .hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #7c3aed, #06b6d4, #ec4899, transparent);
-            animation: borderGlow 3s ease-in-out infinite;
-        }
-
-        @keyframes borderGlow {
-
-            0%,
-            100% {
-                opacity: 0.5;
-            }
-
-            50% {
-                opacity: 1;
-            }
-        }
-
-        .hero h1 {
-            font-size: 4rem;
-            background: linear-gradient(135deg, #7c3aed 0%, #06b6d4 35%, #ec4899 70%, #f59e0b 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 1.5rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-            position: relative;
-            z-index: 1;
-            filter: drop-shadow(0 0 20px rgba(124, 58, 237, 0.3));
-        }
-
-        .hero p {
-            font-size: 1.3rem;
-            color: rgba(255, 255, 255, 0.8);
-            max-width: 700px;
-            margin: 0 auto 2rem;
-            position: relative;
-            z-index: 1;
-        }
-
-        .features {
+        .baseurl {
             display: flex;
             flex-wrap: wrap;
-            gap: 1rem;
-            justify-content: center;
-            margin-top: 2rem;
-            position: relative;
-            z-index: 1;
+            align-items: center;
+            gap: 8px 12px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 10px 10px 10px 14px;
+            max-width: 640px;
+            box-shadow: var(--shadow);
         }
 
-        .feature:nth-child(1) {
-            background: linear-gradient(45deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.1));
-            border: 1px solid rgba(0, 255, 255, 0.4);
-            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.2);
+        .baseurl .label { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
+        .baseurl code { flex: 1 1 260px; overflow-wrap: anywhere; font-size: 0.95rem; }
+
+        .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+
+        .badge {
+            font-size: 0.8rem;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: var(--surface-2);
+            color: var(--muted);
+            border: 1px solid var(--border);
         }
 
-        .feature:nth-child(2) {
-            background: linear-gradient(45deg, rgba(0, 255, 65, 0.2), rgba(0, 255, 65, 0.1));
-            border: 1px solid rgba(0, 255, 65, 0.4);
-            box-shadow: 0 4px 15px rgba(0, 255, 65, 0.2);
-        }
-
-        .feature:nth-child(3) {
-            background: linear-gradient(45deg, rgba(255, 107, 53, 0.2), rgba(255, 107, 53, 0.1));
-            border: 1px solid rgba(255, 107, 53, 0.4);
-            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.2);
-        }
-
-        .feature:nth-child(4) {
-            background: linear-gradient(45deg, rgba(255, 0, 85, 0.2), rgba(255, 0, 85, 0.1));
-            border: 1px solid rgba(255, 0, 85, 0.4);
-            box-shadow: 0 4px 15px rgba(255, 0, 85, 0.2);
-        }
-
-        .feature:nth-child(5) {
-            background: linear-gradient(45deg, rgba(0, 255, 255, 0.15), rgba(255, 107, 53, 0.15));
-            border: 1px solid rgba(0, 255, 255, 0.4);
-            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.2);
-        }
-
-        .feature {
-            color: #ffffff;
-            padding: 0.7rem 1.3rem;
-            border-radius: 30px;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-
-        .feature:hover {
-            transform: translateY(-2px);
-            filter: brightness(1.2);
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 40px 20px;
-        }
-
-        .grid {
+        .stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 2rem;
-            margin-bottom: 3rem;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin: 32px 0 0;
+            padding: 0;
         }
 
-        .card:nth-child(1) {
-            background: linear-gradient(135deg, rgba(0, 255, 255, 0.08) 0%, rgba(0, 0, 0, 0.8) 100%);
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            box-shadow: 0 4px 20px rgba(0, 255, 255, 0.1);
-        }
+        .stats div { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+        .stats dt { color: var(--muted); font-size: 0.8rem; }
+        .stats dd { margin: 0; font-size: 1.5rem; font-weight: 650; letter-spacing: -0.01em; }
 
-        .card:nth-child(2) {
-            background: linear-gradient(135deg, rgba(0, 255, 65, 0.08) 0%, rgba(0, 0, 0, 0.8) 100%);
-            border: 1px solid rgba(0, 255, 65, 0.3);
-            box-shadow: 0 4px 20px rgba(0, 255, 65, 0.1);
-        }
-
-        .card:nth-child(3) {
-            background: linear-gradient(135deg, rgba(255, 107, 53, 0.08) 0%, rgba(0, 0, 0, 0.8) 100%);
-            border: 1px solid rgba(255, 107, 53, 0.3);
-            box-shadow: 0 4px 20px rgba(255, 107, 53, 0.1);
-        }
-
-        .card:nth-child(4) {
-            background: linear-gradient(135deg, rgba(255, 0, 85, 0.08) 0%, rgba(0, 0, 0, 0.8) 100%);
-            border: 1px solid rgba(255, 0, 85, 0.3);
-            box-shadow: 0 4px 20px rgba(255, 0, 85, 0.1);
-        }
-
-        .card:nth-child(5) {
-            background: linear-gradient(135deg, rgba(0, 255, 255, 0.05) 0%, rgba(255, 107, 53, 0.05) 50%, rgba(0, 0, 0, 0.8) 100%);
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            box-shadow: 0 4px 20px rgba(0, 255, 255, 0.1);
-        }
-
-        .card:nth-child(6) {
-            background: linear-gradient(135deg, rgba(255, 0, 85, 0.05) 0%, rgba(0, 255, 65, 0.05) 50%, rgba(0, 0, 0, 0.8) 100%);
-            border: 1px solid rgba(255, 0, 85, 0.3);
-            box-shadow: 0 4px 20px rgba(255, 0, 85, 0.1);
-        }
+        /* Sections */
+        section { padding-block: 28px; }
+        h2 { font-size: 1.35rem; margin: 0 0 6px; letter-spacing: -0.01em; }
+        .section-intro { color: var(--muted); margin: 0 0 18px; }
 
         .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 2rem;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow);
         }
 
-        .card:hover {
-            transform: translateY(-5px);
-            filter: brightness(1.1);
-        }
-
-        .card h2 {
-            background: linear-gradient(45deg, #00ffff, #ff6b35, #00ff41, #ff0055);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 1rem;
-            font-size: 1.5rem;
-        }
-
-        .card ul {
-            color: #b0b0b0;
-        }
-
-        .card ul li {
-            margin-bottom: 0.5rem;
-        }
-
-        .card ul li strong {
-            color: #ffffff;
-        }
-
-        .card p {
-            color: #b0b0b0;
-        }
-
-        .endpoint {
-            background: rgba(0, 255, 255, 0.05);
-            border-left: 4px solid #00ffff;
-            padding: 1rem;
-            margin: 1rem 0;
-            border-radius: 0 8px 8px 0;
-            border: 1px solid rgba(0, 255, 255, 0.2);
-        }
-
-        .endpoint:nth-child(2) {
-            border-left-color: #00ff41;
-            border-color: rgba(0, 255, 65, 0.2);
-            background: rgba(0, 255, 65, 0.05);
-        }
-
-        .endpoint:nth-child(3) {
-            border-left-color: #ff6b35;
-            border-color: rgba(255, 107, 53, 0.2);
-            background: rgba(255, 107, 53, 0.05);
-        }
-
-        .endpoint:nth-child(4) {
-            border-left-color: #ff0055;
-            border-color: rgba(255, 0, 85, 0.2);
-            background: rgba(255, 0, 85, 0.05);
-        }
-
-        .method {
-            background: linear-gradient(45deg, #00ffff, #ff6b35);
-            color: #000000;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-
-        .endpoint-url {
-            font-family: 'Monaco', 'Courier New', monospace;
-            background: rgba(255, 255, 255, 0.1);
-            color: #ffffff;
-            padding: 0.25rem 0.5rem;
-            border-radius: 4px;
-            margin: 0.5rem 0;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            display: inline-block;
-            word-break: break-all;
-            max-width: 100%;
-        }
-
-        .endpoint p {
-            color: #b0b0b0;
-            margin: 0.5rem 0;
-        }
-
-        .try-link {
-            background: linear-gradient(45deg, #00ffff, #ff6b35, #00ff41, #ff0055);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-decoration: none;
-            font-weight: 500;
-            transition: all 0.2s ease;
-        }
-
-        .try-link:hover {
-            filter: brightness(1.3);
-            text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
-        }
-
-        .code-block {
-            background: rgba(0, 0, 0, 0.9);
-            color: #00ffff;
-            padding: 1.5rem;
-            border-radius: 8px;
-            overflow-x: auto;
-            font-family: 'Monaco', 'Courier New', monospace;
+        /* Buttons */
+        button, .btn {
+            font: inherit;
             font-size: 0.9rem;
-            border: 1px solid rgba(0, 255, 255, 0.3);
-            box-shadow: inset 0 0 20px rgba(0, 255, 255, 0.1);
-        }
-
-        .btn {
-            display: inline-block;
-            background: linear-gradient(45deg, rgba(0, 255, 255, 0.8), rgba(255, 107, 53, 0.8));
-            color: #000000;
-            padding: 0.75rem 1.5rem;
-            text-decoration: none;
             border-radius: 8px;
-            margin: 0.5rem 0.5rem 0.5rem 0;
-            transition: all 0.3s ease;
-            border: 1px solid rgba(0, 255, 255, 0.4);
-            font-weight: bold;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text);
+            padding: 6px 12px;
+            cursor: pointer;
+            white-space: nowrap;
         }
 
-        .btn:hover {
-            background: linear-gradient(45deg, rgba(0, 255, 255, 1), rgba(255, 107, 53, 1));
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 255, 255, 0.4);
+        button:hover { border-color: var(--muted); }
+
+        .primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; padding: 9px 16px; }
+        .primary:hover { filter: brightness(1.08); border-color: var(--accent); }
+
+        @media (prefers-color-scheme: dark) { .primary { color: #0e1013; } }
+
+        /* Console */
+        .console { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); overflow: hidden; }
+
+        .console form { padding: 18px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px; }
+
+        label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+
+        select, input {
+            width: 100%;
+            font: inherit;
+            font-size: 0.92rem;
+            color: var(--text);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
         }
 
-        .footer {
-            background: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(15px);
-            padding: 2rem 0;
-            text-align: center;
-            color: #b0b0b0;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        .request-url {
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 10px;
+            overflow-wrap: anywhere;
         }
 
-        .footer a {
-            background: linear-gradient(45deg, #00ffff, #ff6b35, #00ff41, #ff0055);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-decoration: none;
-            transition: all 0.2s ease;
+        .row { display: flex; gap: 6px; flex-wrap: wrap; }
+        .label-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 6px; }
+        .label-row label { margin: 0; }
+        button.small { font-size: 0.76rem; padding: 2px 8px; border-radius: 6px; }
+        .block { width: 100%; }
+
+        .response { display: flex; flex-direction: column; min-width: 0; }
+
+        .response-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--muted);
+            min-height: 48px;
         }
 
-        .footer a:hover {
-            filter: brightness(1.3);
+        .status { font-family: var(--mono); font-weight: 600; padding: 2px 8px; border-radius: 6px; }
+        .status.ok { background: var(--get-soft); color: var(--get); }
+        .status.err { background: var(--err-soft); color: var(--err); }
+
+        pre.json {
+            margin: 0;
+            padding: 16px;
+            background: var(--code-bg);
+            overflow: auto;
+            max-height: 460px;
+            min-height: 260px;
+            flex: 1;
+            font-size: 0.8rem;
+            line-height: 1.55;
         }
 
-        @media (max-width: 768px) {
-            .hero h1 {
-                font-size: 2rem;
-            }
+        .json .key { color: var(--key); }
+        .json .str { color: var(--str); }
+        .json .num { color: var(--num); }
+        .json .lit { color: var(--lit); }
 
-            .hero p {
-                font-size: 1rem;
-            }
+        /* Endpoint reference */
+        .group-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 22px 0 10px; }
+        .group-title:first-child { margin-top: 0; }
 
-            .features {
-                gap: 0.5rem;
-            }
+        .endpoints { display: grid; gap: 10px; }
 
-            .card {
-                padding: 1.5rem;
-            }
+        .ep { padding: 16px 18px; }
+        .ep-head { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .get { font: 600 0.72rem var(--mono); color: var(--get); background: var(--get-soft); padding: 2px 7px; border-radius: 5px; }
+        .ep-path { font-size: 0.95rem; overflow-wrap: anywhere; }
+        .param { color: var(--accent); }
+        .ep p { margin: 8px 0 0; color: var(--muted); }
+        .fields { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .fields code { background: var(--surface-2); border-radius: 5px; padding: 1px 6px; font-size: 0.78rem; color: var(--text); }
+        .ep-actions { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 12px; font-size: 0.88rem; }
+        .ep-actions a { overflow-wrap: anywhere; }
+
+        /* Notes */
+        .notes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .note { padding: 16px 18px; }
+        .note h3 { font-size: 1rem; margin: 0 0 8px; }
+        .note ul { margin: 0; padding-left: 18px; color: var(--muted); }
+        .note li + li { margin-top: 6px; }
+        .note code { color: var(--text); }
+
+        /* Example */
+        pre.snippet {
+            margin: 0;
+            padding: 18px;
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow-x: auto;
+            font-size: 0.84rem;
+            line-height: 1.6;
+        }
+
+        .snippet .c { color: var(--muted); }
+
+        footer {
+            border-top: 1px solid var(--border);
+            margin-top: 28px;
+            padding-block: 24px 40px;
+            color: var(--muted);
+            font-size: 0.88rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 24px;
+            justify-content: space-between;
+        }
+
+        footer p { margin: 0; }
+
+        @media (max-width: 860px) {
+            .console { grid-template-columns: minmax(0, 1fr); }
+            .console form { border-right: 0; border-bottom: 1px solid var(--border); }
+            .notes { grid-template-columns: minmax(0, 1fr); }
+            .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+
+        @media (max-width: 480px) {
+            body { padding-inline: 16px; }
+            header { padding-block: 36px 20px; }
+            .stats dd { font-size: 1.25rem; }
         }
     </style>
 </head>
 
 <body>
-    <div class="hero">
-        <div
-            style="position: absolute; top: 20px; right: 20px; font-size: 0.8rem; background: rgba(124, 58, 237, 0.2); color: #7c3aed; padding: 4px 10px; border-radius: 4px; border: 1px solid rgba(124, 58, 237, 0.4);">
-            v1.1.0
-        </div>
-        <h1>🌍 Country State API</h1>
-        <p>Fast, reliable API for countries and states. Perfect for dropdowns, forms, and international applications.
-        </p>
+    <div class="wrap">
+        <header>
+            <div class="eyebrow"><span class="dot" aria-hidden="true"></span>API v1 · Free · No API key</div>
+            <h1>Country State API</h1>
+            <p class="lede">Countries, states and cities as plain JSON. Built for address forms and dropdowns, with
+                phone codes, flags, regions, coordinates and local-language names.</p>
 
-        <div class="features">
-            <span class="feature">🚀 Fast & Redis Cached</span>
-            <span class="feature">🛡️ Redis-Backed Limits</span>
-            <span class="feature">📞 Phone Codes</span>
-            <span class="feature">🌍 Regions & Flags</span>
-            <span class="feature">🔍 Search Ready</span>
-        </div>
+            <div class="baseurl">
+                <span class="label">Base URL</span>
+                <code id="base-url">https://country-api.drnyeinchan.com/v1</code>
+                <button type="button" data-copy-from="base-url">Copy</button>
+            </div>
+
+            <div class="badges">
+                <span class="badge">CORS open to any origin</span>
+                <span class="badge">Cached at Cloudflare's edge</span>
+                <span class="badge">GET only</span>
+                <span class="badge">UTF-8 JSON</span>
+            </div>
+
+            <dl class="stats">
+                <div><dt>Countries</dt><dd>249</dd></div>
+                <div><dt>States &amp; regions</dt><dd>5,300+</dd></div>
+                <div><dt>Cities</dt><dd>154,000+</dd></div>
+                <div><dt>World regions</dt><dd>6</dd></div>
+            </dl>
+        </header>
+
+        <section id="try" aria-labelledby="try-title">
+            <h2 id="try-title">Try it</h2>
+            <p class="section-intro">Pick an endpoint, change the inputs and send a live request.</p>
+
+            <div class="card console">
+                <form id="console-form">
+                    <div>
+                        <label for="ep-select">Endpoint</label>
+                        <select id="ep-select"></select>
+                    </div>
+                    <div id="ep-fields" style="display: contents;"></div>
+                    <div>
+                        <div class="label-row">
+                            <label>Request</label>
+                            <span class="row">
+                                <button type="button" class="small" id="copy-url">Copy URL</button>
+                                <button type="button" class="small" id="copy-curl">Copy curl</button>
+                            </span>
+                        </div>
+                        <div class="request-url" id="request-url"></div>
+                    </div>
+                    <button type="submit" class="primary block">Send request</button>
+                </form>
+                <div class="response">
+                    <div class="response-meta" id="response-meta" aria-live="polite">No request sent yet.</div>
+                    <pre class="json" id="response-body"></pre>
+                </div>
+            </div>
+        </section>
+
+        <section aria-labelledby="ref-title">
+            <h2 id="ref-title">Endpoints</h2>
+            <p class="section-intro">Every endpoint is a GET request that returns JSON. Paths are relative to the
+                host above.</p>
+            <div id="endpoints"></div>
+        </section>
+
+        <section aria-labelledby="notes-title">
+            <h2 id="notes-title">Good to know</h2>
+            <div class="notes">
+                <div class="card note">
+                    <h3>Matching</h3>
+                    <ul>
+                        <li>Country codes are case-insensitive: <code>/v1/countries/mm</code> works.</li>
+                        <li>State names are forgiving: exact match first, then starts-with, then contains.
+                            <code>/states/yangon/cities</code> finds Yangon Region.</li>
+                        <li>Search is a case-insensitive substring match. City search also matches
+                            <code>name_local</code>, such as Myanmar script.</li>
+                    </ul>
+                </div>
+                <div class="card note">
+                    <h3>Limits</h3>
+                    <ul>
+                        <li>Search returns at most 20 countries, 20 states, 50 cities or 10 phone-code matches.</li>
+                        <li>Cities come back in the source data's order, not ranked by relevance.</li>
+                        <li>No API key or sign-up needed.</li>
+                    </ul>
+                </div>
+                <div class="card note">
+                    <h3>Errors</h3>
+                    <ul>
+                        <li><code>404</code> with a JSON <code>detail</code>, for example
+                            <code>"Country not found"</code>, <code>"State not found"</code> or
+                            <code>"Region not found"</code>.</li>
+                        <li><code>400</code> for a malformed URL, and <code>405</code> for any method other than GET or
+                            HEAD.</li>
+                    </ul>
+                </div>
+                <div class="card note">
+                    <h3>Caching &amp; CORS</h3>
+                    <ul>
+                        <li>Responses carry <code>Cache-Control: public, max-age=3600</code> and an ETag, so browsers
+                            can revalidate cheaply.</li>
+                        <li>Any origin can call the API from the browser, preflight included.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section aria-labelledby="example-title">
+            <h2 id="example-title">Example: country → state → city dropdowns</h2>
+            <p class="section-intro">Plain <code>fetch</code>, no client library needed.</p>
+            <pre class="snippet"><code>const API = '<span class="api-host">https://country-api.drnyeinchan.com</span>/v1';
+
+<span class="c">// 1. Countries for the first dropdown</span>
+const countries = await fetch(`${API}/countries`).then((r) => r.json());
+<span class="c">// [{ code: 'AF', name: 'Afghanistan', phone_code: '+93', flag: '🇦🇫' }, …]</span>
+
+<span class="c">// 2. States once a country is picked</span>
+const states = await fetch(`${API}/countries/MM/states`).then((r) => r.json());
+
+<span class="c">// 3. Cities once a state is picked (encode names that contain spaces)</span>
+const cities = await fetch(
+  `${API}/countries/MM/states/${encodeURIComponent('Yangon Region')}/cities`
+).then((r) => r.json());</code></pre>
+        </section>
+
+        <footer>
+            <p>Created by <a href="https://github.com/nchanko" target="_blank" rel="noopener">Nyein Chan Ko Ko</a> ·
+                <a href="https://github.com/nchanko/country-state-api" target="_blank" rel="noopener">Source on
+                    GitHub</a> · MIT License</p>
+            <p>Data: <a href="https://github.com/dr5hn/countries-states-cities-database" target="_blank"
+                    rel="noopener">dr5hn/countries-states-cities-database</a> and
+                <a href="https://themimu.info/" target="_blank" rel="noopener">MIMU</a> for Myanmar.</p>
+        </footer>
     </div>
 
-    <div class="container">
-        <div class="grid">
-            <div class="card">
-                <h2>🚀 Quick Start</h2>
-                <div class="code-block">curl https://your-api-domain.com/v1/countries</div>
-                <p style="margin-top: 1rem;">Get started in seconds. No authentication required for public use.</p>
-            </div>
+    <script>
+        // The page is served by the API itself, so its own origin is the API host.
+        const API_HOST = /^https?:/.test(location.origin) ? location.origin : 'https://country-api.drnyeinchan.com';
 
-            <div class="card">
-                <h2>📊 What You Get</h2>
-                <ul>
-                    <li><strong>249 Countries</strong> with complete data</li>
-                    <li><strong>States & Provinces</strong> for all countries</li>
-                    <li><strong>150,000+ Cities</strong> with coordinates</li>
-                    <li><strong>Phone codes</strong> & <strong>local names</strong></li>
-                    <li><strong>6 World regions</strong> with subregions</li>
-                    <li><strong>Currencies & flags</strong> included</li>
-                </ul>
-            </div>
+        const LABELS = { code: 'Country code', state: 'State name', region: 'Region', q: 'Search text', dial: 'Phone code' };
 
-            <div class="card">
-                <h2>🔗 Main Endpoints</h2>
+        const ENDPOINTS = [
+            {
+                id: 'countries', group: 'Countries', path: '/v1/countries',
+                desc: 'Every country with its phone code and flag.',
+                fields: ['code', 'name', 'phone_code', 'flag'],
+            },
+            {
+                id: 'country', group: 'Countries', path: '/v1/countries/:code', params: { code: 'MM' },
+                desc: 'One country with region, currency, language, population and the names of its states.',
+                fields: ['code', 'name', 'phone_code', 'flag', 'region', 'subregion', 'currency', 'currency_symbol', 'language', 'population', 'states[]'],
+            },
+            {
+                id: 'states', group: 'States & cities', path: '/v1/countries/:code/states', params: { code: 'MM' },
+                desc: 'States, provinces and regions of one country. Use the cities endpoint for their cities.',
+                fields: ['name', 'cities (always empty here)'],
+            },
+            {
+                id: 'cities', group: 'States & cities', path: '/v1/countries/:code/states/:state/cities',
+                params: { code: 'MM', state: 'Yangon Region' },
+                desc: 'Cities in one state, with local-language names and coordinates.',
+                fields: ['name', 'name_local', 'latitude', 'longitude'],
+            },
+            {
+                id: 'regions', group: 'Regions', path: '/v1/regions',
+                desc: 'The six world regions with their subregions and member country codes.',
+                fields: ['name', 'subregions[]', 'countries[]'],
+            },
+            {
+                id: 'region', group: 'Regions', path: '/v1/regions/:region/countries', params: { region: 'Asia' },
+                desc: 'Countries in one region: Africa, Americas, Antarctic, Asia, Europe or Oceania.',
+                fields: ['code', 'name', 'phone_code', 'flag', 'region', 'subregion'],
+            },
+            {
+                id: 'search-countries', group: 'Search', path: '/v1/search/countries', query: 'q', params: { q: 'united' },
+                desc: 'Countries whose name contains the search text. Up to 20.',
+                fields: ['code', 'name', 'phone_code', 'flag'],
+            },
+            {
+                id: 'search-states', group: 'Search', path: '/v1/search/states', query: 'q', params: { q: 'yangon' },
+                desc: 'States whose name contains the search text, across all countries. Up to 20.',
+                fields: ['name', 'country_code', 'country_name'],
+            },
+            {
+                id: 'search-cities', group: 'Search', path: '/v1/search/cities', query: 'q', params: { q: 'mandalay' },
+                desc: 'Cities whose name or local name contains the search text, across all countries. Up to 50.',
+                fields: ['name', 'name_local', 'state_name', 'country_code', 'country_name', 'latitude', 'longitude'],
+            },
+            {
+                id: 'phone', group: 'Search', path: '/v1/search/phone-code/:dial', params: { dial: '95' },
+                desc: 'Countries whose phone code is, or starts with, this one. The + is optional. Up to 10.',
+                fields: ['code', 'name', 'phone_code', 'flag'],
+            },
+            {
+                id: 'version', group: 'Meta', path: '/version',
+                desc: 'API name and version.',
+                fields: ['api_name', 'current_version', 'version', 'available_versions[]'],
+            },
+        ];
 
-                <div class="endpoint">
-                    <span class="method">GET</span><br>
-                    <span class="endpoint-url">/v1/countries</span>
-                    <p>All countries with phone codes and flags</p>
-                    <a href="/v1/countries" target="_blank" class="try-link">→ Try it</a>
-                </div>
+        const $ = (id) => document.getElementById(id);
+        const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-                <div class="endpoint">
-                    <span class="method">GET</span><br>
-                    <span class="endpoint-url">/v1/countries/US/states/California/cities</span>
-                    <p>Get cities for a specific state</p>
-                    <a href="/v1/countries/US/states/California/cities" target="_blank" class="try-link">→ Try it</a>
-                </div>
+        function buildPath(ep, values) {
+            let path = ep.path.replace(/:(\w+)/g, (_, key) => encodeURIComponent((values[key] || '').trim()));
+            if (ep.query) path += '?' + new URLSearchParams([[ep.query, values[ep.query] || '']]);
+            return path;
+        }
 
-                <div class="endpoint">
-                    <span class="method">GET</span><br>
-                    <span class="endpoint-url">/v1/search/cities?q=Tokyo</span>
-                    <p>Global search for cities</p>
-                    <a href="/v1/search/cities?q=Tokyo" target="_blank" class="try-link">→ Try it</a>
-                </div>
-            </div>
+        function pathHtml(ep) {
+            const path = escapeHtml(ep.path).replace(/:(\w+)/g, '<span class="param">:$1</span>');
+            return ep.query ? `${path}?${ep.query}=<span class="param">text</span>` : path;
+        }
 
-            <div class="card">
-                <h2>💡 Use Cases</h2>
-                <ul>
-                    <li><strong>Address forms</strong> with country → state → city search</li>
-                    <li><strong>Phone validation</strong> with country codes</li>
-                    <li><strong>E-commerce</strong> shipping & regional pricing</li>
-                    <li><strong>Travel & Logistics</strong> city data & coordinates</li>
-                    <li><strong>Localized UI</strong> with name_local support</li>
-                </ul>
-            </div>
+        // Endpoint reference, generated from the same list the console uses
+        const refRoot = $('endpoints');
+        let group = null;
+        let list = null;
+        for (const ep of ENDPOINTS) {
+            if (ep.group !== group) {
+                group = ep.group;
+                const title = document.createElement('h3');
+                title.className = 'group-title';
+                title.textContent = group;
+                list = document.createElement('div');
+                list.className = 'endpoints';
+                refRoot.append(title, list);
+            }
+            const example = buildPath(ep, ep.params || {});
+            const item = document.createElement('article');
+            item.className = 'card ep';
+            item.innerHTML = `
+                <div class="ep-head"><span class="get">GET</span><code class="ep-path">${pathHtml(ep)}</code></div>
+                <p>${escapeHtml(ep.desc)}</p>
+                <div class="fields">${ep.fields.map((f) => `<code>${escapeHtml(f)}</code>`).join('')}</div>
+                <div class="ep-actions">
+                    <button type="button" data-try="${ep.id}">Try it</button>
+                    <a href="${escapeHtml(example)}" target="_blank" rel="noopener">${escapeHtml(decodeURIComponent(example))} ↗</a>
+                </div>`;
+            list.append(item);
+        }
 
-            <div class="card">
-                <h2>🛠️ Integration</h2>
-                <div class="code-block">// Get countries with flags
-                    const countries = await fetch('/v1/countries')
-                    .then(r => r.json());
+        // Console
+        const select = $('ep-select');
+        const fieldsRoot = $('ep-fields');
+        const urlBox = $('request-url');
+        const meta = $('response-meta');
+        const out = $('response-body');
 
-                    // Populate dropdown
-                    countrySelect.innerHTML = countries.map(c =>
-                    `&lt;option value="${c.code}"&gt;
-                    ${c.flag} ${c.name} (${c.phone_code})
-                    &lt;/option&gt;`
-                    ).join('');</div>
-            </div>
+        for (const name of [...new Set(ENDPOINTS.map((e) => e.group))]) {
+            const optgroup = document.createElement('optgroup');
+            optgroup.label = name;
+            for (const ep of ENDPOINTS.filter((e) => e.group === name)) {
+                optgroup.append(new Option(ep.path.replace(/^\/v1/, '') || ep.path, ep.id));
+            }
+            select.append(optgroup);
+        }
 
-            <div class="card">
-                <h2>📚 Documentation</h2>
-                <p>Endpoint reference and examples are in the project README.</p>
-                <div style="margin-top: 1rem;">
-                    <a href="https://github.com/nchanko/country-state-api#readme" target="_blank" class="btn">📖 README on GitHub</a>
-                </div>
-            </div>
-        </div>
-    </div>
+        const current = () => ENDPOINTS.find((e) => e.id === select.value);
 
-    <div class="footer">
-        <p>⚡ Served from Cloudflare's edge • 🚀 Optimized for performance • 🌐 Ready for production</p>
-        <p>Created by <a href="https://github.com/nchanko" target="_blank">Nyein Chan Ko Ko</a> • Open Source under MIT
-            License</p>
-    </div>
+        function values() {
+            const v = {};
+            for (const input of fieldsRoot.querySelectorAll('input')) v[input.name] = input.value;
+            return v;
+        }
+
+        const requestUrl = () => API_HOST + buildPath(current(), values());
+
+        function renderFields() {
+            fieldsRoot.innerHTML = '';
+            for (const [key, value] of Object.entries(current().params || {})) {
+                const wrap = document.createElement('div');
+                const id = `field-${key}`;
+                wrap.innerHTML = `<label for="${id}">${LABELS[key]}</label>`;
+                const input = document.createElement('input');
+                Object.assign(input, { id, name: key, value, autocomplete: 'off', spellcheck: false });
+                input.addEventListener('input', () => { urlBox.textContent = requestUrl(); });
+                wrap.append(input);
+                fieldsRoot.append(wrap);
+            }
+            urlBox.textContent = requestUrl();
+        }
+
+        function highlight(json) {
+            return escapeHtml(json).replace(
+                /(&quot;(?:[^&\\]|\\.|&(?!quot;))*?&quot;)(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+                (m, str, colon, lit, num) => {
+                    if (str) return `<span class="${colon ? 'key' : 'str'}">${str}</span>${colon || ''}`;
+                    if (lit) return `<span class="lit">${lit}</span>`;
+                    return `<span class="num">${num}</span>`;
+                });
+        }
+
+        async function send() {
+            const url = requestUrl();
+            meta.textContent = 'Sending…';
+            const started = performance.now();
+            try {
+                const res = await fetch(url, { headers: { Accept: 'application/json' } });
+                const text = await res.text();
+                const ms = Math.round(performance.now() - started);
+                let body = text;
+                let count = '';
+                try {
+                    const data = JSON.parse(text);
+                    body = JSON.stringify(data, null, 2);
+                    if (Array.isArray(data)) count = `${data.length.toLocaleString()} item${data.length === 1 ? '' : 's'}`;
+                } catch { /* not JSON; show as text */ }
+                const kb = (new Blob([text]).size / 1024).toFixed(1);
+                meta.innerHTML = `<span class="status ${res.ok ? 'ok' : 'err'}">${res.status}</span>
+                    <span>${ms} ms</span>${count ? `<span>${count}</span>` : ''}<span>${kb} KB</span>`;
+                out.innerHTML = highlight(body);
+                out.scrollTop = 0;
+            } catch (err) {
+                meta.innerHTML = '<span class="status err">Network error</span>';
+                out.textContent = String(err);
+            }
+        }
+
+        async function copy(text, button) {
+            const label = button.textContent;
+            try {
+                await navigator.clipboard.writeText(text);
+                button.textContent = 'Copied';
+            } catch {
+                button.textContent = 'Copy failed';
+            }
+            setTimeout(() => { button.textContent = label; }, 1400);
+        }
+
+        select.addEventListener('change', () => { renderFields(); send(); });
+        $('console-form').addEventListener('submit', (e) => { e.preventDefault(); send(); });
+        $('copy-url').addEventListener('click', (e) => copy(requestUrl(), e.currentTarget));
+        $('copy-curl').addEventListener('click', (e) => copy(`curl '${requestUrl()}'`, e.currentTarget));
+
+        document.addEventListener('click', (e) => {
+            const tryBtn = e.target.closest('[data-try]');
+            if (tryBtn) {
+                select.value = tryBtn.dataset.try;
+                renderFields();
+                send();
+                $('try').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            const copyBtn = e.target.closest('[data-copy-from]');
+            if (copyBtn) copy($(copyBtn.dataset.copyFrom).textContent, copyBtn);
+        });
+
+        // Show the real host wherever the page mentions it
+        $('base-url').textContent = `${API_HOST}/v1`;
+        for (const el of document.querySelectorAll('.api-host')) el.textContent = API_HOST;
+
+        select.value = 'cities';
+        renderFields();
+        send();
+    </script>
 </body>
 
 </html>

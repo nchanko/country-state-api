@@ -609,7 +609,8 @@ def get_version_info(request: Request):
         "version": "1.0.0",
         "available_versions": ["v1"],
         "endpoints": {"v1": "/v1/"},
-        "documentation": {"interactive": "/docs", "redoc": "/redoc"},
+        # The landing page is the reference: the Cloudflare deployment has no /docs
+        "documentation": {"reference": "/"},
     }
 
 
