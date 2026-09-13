@@ -9,7 +9,7 @@
 import COUNTRIES from "./data/countries.json";
 import STATES from "./data/states.json";
 import COUNTRY_NAMES from "./data/country_names.json";
-import SPLIT_KEYS from "./data/split_keys.json";
+import TRI_SIZES from "./data/tri_sizes.json";
 
 interface Env {
   ASSETS: Fetcher;
@@ -17,7 +17,10 @@ interface Env {
 
 type CityRow = [string, string, string, string, number | null, number | null];
 
-const SPLIT = new Set<string>(SPLIT_KEYS);
+// Must match TRI_BUCKETS / SHORT_BUCKETS in scripts/build_search.py.
+const TRI_BUCKETS = 2048;
+const SHORT_BUCKETS = 512;
+
 const NAMES = COUNTRY_NAMES as Record<string, string>;
 
 const JSON_HEADERS = {
@@ -31,42 +34,46 @@ const json = (body: unknown, status = 200) =>
 
 const notFound = (detail: string) => json({ detail }, 404);
 
-/** Collapse whitespace and lowercase, matching the indexer's normalization. */
-const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
+/** FNV-1a over UTF-8 bytes; must match fnv1a() in scripts/build_search.py. */
+function fnv1a(key: string): number {
+  let h = 0x811c9dc5;
+  for (const b of new TextEncoder().encode(key)) h = Math.imul(h ^ b, 0x01000193) >>> 0;
+  return h;
+}
+
+async function loadIndex<T>(env: Env, base: URL, path: string): Promise<T | null> {
+  const res = await env.ASSETS.fetch(new URL(path, base));
+  return res.ok ? res.json<T>() : null;
+}
 
 /**
- * Word-prefix match: the full name starts with q, or any word does.
- * Must stay in sync with keys_for() in scripts/build_search.py — that function
- * decides which shard a city lands in, and this one decides whether it matches.
+ * Mirrors search_cities() in main.py: the first 50 cities, in file order, whose
+ * lowercased name or local name contains q. scripts/build_search.py explains
+ * why the shard read here always holds every match.
  */
-function matchesPrefix(name: string, q: string): boolean {
-  const n = norm(name);
-  if (!n) return false;
-  if (n.startsWith(q)) return true;
-  for (const word of n.split(" ")) if (word.startsWith(q)) return true;
-  return false;
-}
-
-async function loadShard(env: Env, base: URL, key: string): Promise<CityRow[]> {
-  const hex = [...new TextEncoder().encode(key)]
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  const res = await env.ASSETS.fetch(new URL(`/_idx/cities/${hex}`, base));
-  if (!res.ok) return [];
-  return res.json();
-}
-
 async function searchCities(env: Env, base: URL, q: string): Promise<Response> {
   if (!q) return json([]);
+  const chars = Array.from(q); // code points, matching the indexer's slicing
 
-  // Route to a shard that is guaranteed complete for this query. A 2-char key
-  // that was split is capped, so anything longer must use its 3-char child.
-  const key = q.length >= 3 && SPLIT.has(q.slice(0, 2)) ? q.slice(0, 3) : q.slice(0, 2);
-  const rows = await loadShard(env, base, key.length < 2 ? q.slice(0, 1) : key);
+  let rows: CityRow[];
+  if (chars.length < 3) {
+    const group = await loadIndex<Record<string, CityRow[]>>(
+      env, base, `/_idx/cities/s/${fnv1a(q) % SHORT_BUCKETS}`,
+    );
+    rows = group?.[q] ?? [];
+  } else {
+    // Any trigram of q leads to a complete bucket; read the smallest one.
+    let best = -1;
+    for (let i = 0; i + 3 <= chars.length; i++) {
+      const b = fnv1a(chars.slice(i, i + 3).join("")) % TRI_BUCKETS;
+      if (best < 0 || TRI_SIZES[b] < TRI_SIZES[best]) best = b;
+    }
+    rows = (await loadIndex<CityRow[]>(env, base, `/_idx/cities/t/${best}`)) ?? [];
+  }
 
   const out = [];
   for (const [n, nl, s, c, lat, lon] of rows) {
-    if (matchesPrefix(n, q) || (nl && matchesPrefix(nl, q))) {
+    if (n.toLowerCase().includes(q) || (nl && nl.toLowerCase().includes(q))) {
       out.push({
         name: n,
         name_local: nl,
@@ -140,7 +147,8 @@ export default {
       return json({ detail: "Method Not Allowed" }, 405);
     }
 
-    const q = norm(url.searchParams.get("q") ?? "");
+    // Same normalization as every search handler in main.py: q.lower().strip()
+    const q = (url.searchParams.get("q") ?? "").toLowerCase().trim();
 
     if (path === "/v1/search/cities") return searchCities(env, base, q);
 

@@ -48,6 +48,8 @@ async function runTests() {
   assert.strictEqual(res.status, 200);
   let data = await res.json();
   assert(Array.isArray(data) && data.length > 0, "Expected cities returned for Yangon");
+  // Substring match like main.py, not word-prefix: 'Mayangone' contains 'yangon'
+  assert(data.some((c) => c.name === "Mayangone"), "Expected substring match Mayangone");
   console.log(`  ✓ Found ${data.length} results. First match: ${data[0].name}, ${data[0].country_name}`);
 
   // Test 2: City search for Tokyo

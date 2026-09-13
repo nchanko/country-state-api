@@ -2,33 +2,31 @@
 
 Two different strategies, chosen by size:
 
-  countries (249) and states (6,966) are small enough to embed in the Worker
+  countries (249) and states (~5,300) are small enough to embed in the Worker
   bundle and scan per request, so they keep the current substring semantics
   byte-for-byte.
 
   cities (154,190) cannot be scanned inside the free tier's 10ms CPU budget, so
-  they are sharded by word-prefix into static assets the Worker fetches on
-  demand.
+  they are sharded into static assets the Worker fetches on demand.
 
-Sharding is adaptive: 2 chars by default, splitting to 3 only for keys that are
-actually crowded. A uniform 3-char split produced 11,499 files against
-Cloudflare's 20,000-file limit while the median shard held 3 cities.
+City search must match search_cities() in main.py exactly: a city matches when
+the lowercased query is a substring of its lowercased name or name_local, and
+the first 50 matches in world_cities.json order are returned.
 
 Shard contract, which the Worker depends on:
 
-  * A shard holds compact rows in ORIGINAL world_cities.json order, because the
-    live API returns the first 50 matches in file order and we must match that.
-  * A shard is COMPLETE (holds every city matching its key) unless its key is in
-    the split manifest. A query longer than its key filters inside the shard, so
-    nothing may be missing from it.
-  * A shard IS capped at LIMIT rows when its key was split, or is 1 char long.
-    That is safe only because a capped shard is read exclusively by a query equal
-    to its own key, which never needs more than LIMIT results. Longer queries on
-    a split key are routed to a complete 3-char child instead.
-
-Filenames are hex-encoded UTF-8 of the key. Raw keys would be unsafe: macOS
-normalizes and case-folds unicode filenames, so 'ą' and 'a' + combining ogonek
-would silently collide at build time while staying distinct on Cloudflare.
+  * Queries of 3+ characters read a trigram bucket. A city is stored in the
+    bucket of every trigram of its lowercased names, and any match contains
+    every trigram of the query, so each of the query's buckets holds every
+    match. Buckets are COMPLETE and keep original order; the Worker reads the
+    smallest candidate (sizes in src/data/tri_sizes.json) and filters it.
+  * Queries of 1-2 characters have no trigram, so every 1- and 2-character
+    substring gets its own list of the first LIMIT matching cities, grouped
+    into hashed files as {key: rows}.
+  * A key's bucket is FNV-1a of its UTF-8 bytes mod the bucket count; fnv1a()
+    in src/index.ts must produce the same numbers.
+  * N-grams are taken over code points (Python string slicing); the Worker
+    splits the query with Array.from() to match.
 """
 
 import json
@@ -46,35 +44,32 @@ sys.path.insert(0, str(ROOT))
 
 import main  # noqa: E402
 
-DEPTH = 3   # deepest key we shard at; 3-char shards are always complete
-LIMIT = 50  # /v1/search/cities caps results at 50
-SPLIT_OVER = 1200  # a 2-char shard bigger than this is split into 3-char children
+LIMIT = 50           # /v1/search/cities caps results at 50
+TRI_BUCKETS = 2048   # must match TRI_BUCKETS in src/index.ts
+SHORT_BUCKETS = 512  # must match SHORT_BUCKETS in src/index.ts
 
 IDX = ROOT / "dist" / "_idx" / "cities"
 SRC_DATA = ROOT / "src" / "data"
 
 
-def keys_for(name: str, name_local: str) -> set:
-    """Every shard key under which this city must be findable.
+def fnv1a(key: str) -> int:
+    h = 0x811C9DC5
+    for b in key.encode("utf-8"):
+        h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF
+    return h
 
-    Mirrors the Worker's match rule: a city matches query q if its full name
-    starts with q, or any word of it starts with q. Both imply the city's row
-    lives in the shard keyed q[:DEPTH], for every prefix length we shard at.
-    """
+
+def ngrams(texts: list, n: int) -> set:
     out = set()
-    for text in (name, name_local):
-        if not text:
-            continue
-        t = " ".join(text.split()).lower()
-        if not t:
-            continue
-        for token in [t] + t.split(" "):
-            if not token:
-                continue
-            for d in range(1, DEPTH + 1):
-                if len(token) >= d:
-                    out.add(token[:d])
+    for t in texts:
+        out.update(t[i:i + n] for i in range(len(t) - n + 1))
     return out
+
+
+def write_json(path: Path, payload) -> int:
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    path.write_text(body, encoding="utf-8")
+    return len(body.encode("utf-8"))
 
 
 def main_build() -> None:
@@ -83,38 +78,38 @@ def main_build() -> None:
 
     if IDX.exists():
         shutil.rmtree(IDX)
-    IDX.mkdir(parents=True)
+    (IDX / "t").mkdir(parents=True)
+    (IDX / "s").mkdir(parents=True)
     SRC_DATA.mkdir(parents=True, exist_ok=True)
 
-    # Bucket rows by key, preserving original order (city_search_index is built
-    # in world_cities.json order, and enumerate gives us that ordinal).
-    buckets: dict = {}
-    for i, city in enumerate(main.city_search_index):
+    tri = [[] for _ in range(TRI_BUCKETS)]
+    short: dict = {}
+    # city_search_index is built in world_cities.json order, which is the order
+    # search_cities() returns, so appending in this loop preserves it.
+    for city in main.city_search_index:
         row = [city["n"], city["nl"], city["s"], city["c"], city.get("lat"), city.get("lon")]
-        for k in keys_for(city["n"], city["nl"]):
-            buckets.setdefault(k, []).append(row)
+        texts = [t.lower() for t in (city["n"], city["nl"]) if t]
+        for b in {fnv1a(g) % TRI_BUCKETS for g in ngrams(texts, 3)}:
+            tri[b].append(row)
+        for g in ngrams(texts, 1) | ngrams(texts, 2):
+            hits = short.setdefault(g, [])
+            if len(hits) < LIMIT:
+                hits.append(row)
 
-    # Only crowded 2-char keys earn 3-char children; the rest stay complete at 2.
-    split = {k for k, rows in buckets.items() if len(k) == 2 and len(rows) > SPLIT_OVER}
+    grouped = [{} for _ in range(SHORT_BUCKETS)]
+    for key, rows in short.items():
+        grouped[fnv1a(key) % SHORT_BUCKETS][key] = rows
 
-    files = 0
     total = 0
-    biggest = ("", 0)
-    for key, rows in buckets.items():
-        if len(key) == DEPTH and key[:2] not in split:
-            continue  # parent is complete; this child would never be read
-        if len(key) == 1 or key in split:
-            rows = rows[:LIMIT]  # capped: only ever read by the query == key
-        body = json.dumps(rows, ensure_ascii=False, separators=(",", ":"))
-        (IDX / (key.encode("utf-8").hex() + ".html")).write_text(body, encoding="utf-8")
-        files += 1
-        total += len(body.encode("utf-8"))
-        if len(body) > biggest[1]:
-            biggest = (key, len(body))
+    for i, rows in enumerate(tri):
+        total += write_json(IDX / "t" / f"{i}.html", rows)
+    for i, keys in enumerate(grouped):
+        total += write_json(IDX / "s" / f"{i}.html", keys)
+    write_json(SRC_DATA / "tri_sizes.json", [len(rows) for rows in tri])
 
-    (SRC_DATA / "split_keys.json").write_text(
-        json.dumps(sorted(split), ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
-    )
+    stale = SRC_DATA / "split_keys.json"  # manifest of the old prefix shards
+    if stale.exists():
+        stale.unlink()
 
     # Small enough to live in the bundle and keep exact substring matching.
     states = [
@@ -133,13 +128,12 @@ def main_build() -> None:
         ("countries.json", countries),
         ("country_names.json", names),
     ):
-        (SRC_DATA / fname).write_text(
-            json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
-        )
+        write_json(SRC_DATA / fname, payload)
 
-    print(f"city shards: {files} files, {total / 1e6:.1f} MB")
-    print(f"largest shard: {biggest[0]!r} at {biggest[1] / 1024:.0f} KB")
-    print(f"split keys: {len(split)}")
+    biggest = max(range(TRI_BUCKETS), key=lambda i: len(tri[i]))
+    print(f"city index: {TRI_BUCKETS + SHORT_BUCKETS} files, {total / 1e6:.1f} MB")
+    print(f"largest trigram bucket: #{biggest} with {len(tri[biggest])} rows")
+    print(f"short keys: {len(short)}")
     print(f"bundled: {len(states)} states, {len(countries)} countries")
 
 
